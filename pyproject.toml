@@ -1,17 +1,22 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
 name = "mozyq"
-version = "0.0.2"
+version = "0.0.3"
 description = ""
 authors = ["Gilad Kutiel <gilad.kutiel@gmail.com>"]
 readme = "README.md"
+
+[project.urls]
+Homepage = "https://mozyq.org"
+Repository = "https://github.com/mozyq/app/"
 
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.375"
 pytest = "^8.3.2"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
