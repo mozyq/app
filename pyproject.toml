@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "mozyq"
-version = "0.0.3"
+version = "0.0.4"
 description = ""
 authors = ["Gilad Kutiel <gilad.kutiel@gmail.com>"]
 readme = "README.md"
