@@ -1,6 +1,6 @@
 # mozyq
 
-<video src="https://github.com/mozyq/app/raw/main/readme.mp4?raw=true"></video>
+<video src="https://github.com/user-attachments/assets/b8511765-de53-4cc5-9f03-fde85ed9c3f0"></video>
 
 mozyq is a Python command line tool that takes a folder containing multiple photos and generates a video of photography mosaics from them. This tool is useful for creating stunning mosaic videos where each frame is a mosaic made from the photos in the input folder.
 
@@ -24,6 +24,8 @@ You can create one like this:
 ```
 mkdir photos && seq 999 | xargs -I {} -n 1 -P 32 wget https://picsum.photos/630 -O photos/{}.jpg
 ```
+
+
 
 To generate a video run:
 ```
