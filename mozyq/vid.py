@@ -101,7 +101,7 @@ def zooms(start: int, steps: int, b=2, end=11, eps=.01):
     return zooms
 
 
-def alphas(steps: int, p=1):
+def alphas(steps: int, p=0.8):
     return np.linspace(0, 1, steps) ** p
 
 
