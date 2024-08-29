@@ -15,7 +15,6 @@ sudo apt install ffmpeg
 pip install mozyq
 ```
 
-
 ## Usage
 
 First you need to have a folder with enough photos.
