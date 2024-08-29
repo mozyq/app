@@ -1,6 +1,6 @@
 # mozyq
 
-<video src="https://github.com/user-attachments/assets/b8511765-de53-4cc5-9f03-fde85ed9c3f0" autoplay muted></video>
+<video src="https://github.com/user-attachments/assets/c1ac633a-3eaa-405d-8a90-749d68fcd234" autoplay muted></video>
 
 mozyq is a Python command line tool that takes a folder containing multiple photos and generates a video of photography mosaics from them. This tool is useful for creating stunning mosaic videos where each frame is a mosaic made from the photos in the input folder.
 
