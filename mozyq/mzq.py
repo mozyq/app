@@ -118,18 +118,21 @@ def gen_mzq_json(
     masters = set()
     mzqs: list[Mozyq] = []
     for _ in tqdm(range(max_transitions)):
-        if master in masters:
-            print(f'Master {master} already used, stopping generation')
-            break
-
         masters.add(master)
 
         # GENERATE
         paths = gen.generate(read_image_lab(master))
-        mzqs.append(Mozyq(master=master, tiles=paths.tolist()))
 
         # Use center tile as next master
         master = paths[len(paths) // 2]
+
+        # CREATE Mozyq
+        mzq = Mozyq(master=master, tiles=paths.tolist())
+        if master in masters:
+            print(f'Master {master} already used, stopping generation')
+            break
+
+        mzqs.append(mzq)
 
     # WRITE JSON
     with output_json.open('w') as f:
@@ -158,7 +161,7 @@ def blocks(
 
 
 if __name__ == '__main__':
-    master = Path('./normalized/0563.jpg')
+    master = Path('./normalized/0122.jpg')
     tile_folder = Path('./blocks')
 
     gen_mzq_json(
