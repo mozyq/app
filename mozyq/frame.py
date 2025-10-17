@@ -52,6 +52,9 @@ def scale_down_crop(
         crop_height: int,
         crop_width: int):
 
+    grid_height += grid_height % 2  # Make even
+    grid_width += grid_width % 2  # Make even
+
     grid = cv2.resize(
         grid,
         (grid_width, grid_height),
