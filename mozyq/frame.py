@@ -9,6 +9,11 @@ from mozyq.mzq import Mozyq
 
 
 def zoom_crop(master: np.ndarray, zoom: float):
+    if (zoom == 1):
+        return master
+
+    assert zoom > 1, 'Zoom must be greater than 1'
+
     h, w, _ = master.shape
     new_h = int(h * zoom)
     new_w = int(w * zoom)
@@ -27,7 +32,6 @@ def zoom_crop(master: np.ndarray, zoom: float):
 
 
 def frame(mzq: Mozyq, zoom: float):
-    print('Frame for', mzq.master)
     return zoom_crop(
         read_image_lab(mzq.master),
         zoom=zoom)
@@ -39,5 +43,5 @@ if __name__ == '__main__':
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
 
-    f = frame(mzqs[0], zoom=2)
+    f = frame(mzqs[0], zoom=1)
     write_jpeg(f.astype(np.uint8), 'frame.jpg')
