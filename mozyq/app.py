@@ -58,7 +58,7 @@ def mzq(
         master_width=width,
         master_height=height,
         tile_width=tile_width,
-        num_transitions=max_transitions,
+        max_transitions=max_transitions,
         output_json=output_json,
         grid_shape=grid_shape)
 

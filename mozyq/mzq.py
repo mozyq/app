@@ -109,7 +109,7 @@ def gen_mzq_json(
         height: int,
         num_tiles: int,
         output_json: Path,
-        num_transitions: int = 10,):
+        max_transitions: int = 50,):
 
     assert num_tiles % 2 == 1, 'num_tiles must be odd'
     assert width % 2 == 0, 'width must be even'
@@ -125,8 +125,15 @@ def gen_mzq_json(
         tile_width=tile_width,
         tile_height=tile_height)
 
+    masters = set()
     mzqs: list[Mozyq] = []
-    for _ in range(num_transitions):
+    for _ in range(max_transitions):
+        if master in masters:
+            print(f'Master {master} already used, stopping generation')
+            break
+
+        masters.add(master)
+
         # GENERATE
         paths = gen.generate(read_image_lab(master))
         mzqs.append(Mozyq(master=master, tiles=paths.tolist()))
