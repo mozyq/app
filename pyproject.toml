@@ -13,6 +13,7 @@ readme = "README.md"
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1"
 pytest = "^8.3"
+pre-commit = "^3.8"
 
 
 [tool.poetry.dependencies]
@@ -24,9 +25,7 @@ tqdm = "^4.66.5"
 typer = "^0.12.3"
 pillow = "^10.0.0"
 ffmpeg-python = "^0.2.0"
-
-[tool.poetry.dev-dependencies]
-pre-commit = "^3.8.0"
+scikit-image = "^0.25.2"
 
 [tool.poetry.scripts]
 mzq = "mozyq.app:main"

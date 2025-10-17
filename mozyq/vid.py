@@ -13,18 +13,25 @@ from cattrs import structure
 from tqdm import tqdm
 
 from mozyq.io import center_crop, load_grid, load_img_any_size, safe_resize
+from mozyq.mozyq_types import Preset
 from mozyq.mzq import Mozyq, Video
-from mozyq.types import Preset
 
 FULL_GRID_MAX_ZOOM = 2
 
 
 @lru_cache(maxsize=2)
-def build_full_grid(mozyq: Mozyq, size: int):
-    tile_size = size // mozyq.nrow
-    assert tile_size * mozyq.nrow == size
+def build_full_grid(mozyq: Mozyq, width: int, height: int):
+    tile_width = width // mozyq.ncol
+    tile_height = height // mozyq.nrow
 
-    return load_grid(mozyq.tiles, tile_size)
+    # Ensure tiles fit evenly
+    assert tile_width * mozyq.ncol == width
+    assert tile_height * mozyq.nrow == height
+
+    # Use the smaller tile size to maintain aspect ratio
+    tile_size = min(tile_width, tile_height)
+
+    return load_grid(mozyq.tiles, tile_size, mozyq.grid_shape)
 
 
 @lru_cache(maxsize=10)
@@ -39,17 +46,24 @@ def build_patch(
 
     return load_grid(
         tiles.ravel().tolist(),
-        zoomed_tile_size)
+        zoomed_tile_size,
+        (tiles.shape[0], tiles.shape[1]))
 
 
-def build_frame_from_patch(mozyq: Mozyq, master_size: int, zoom: float):
-    span = mozyq.nrow / zoom
-    i, j = floor((mozyq.nrow - span) / 2), ceil((mozyq.nrow + span) / 2)
-    tile_size = master_size // mozyq.nrow
-    assert tile_size * mozyq.nrow == master_size
+def build_frame_from_patch(mozyq: Mozyq, master_width: int, master_height: int, zoom: float):
+    span_row = mozyq.nrow / zoom
 
-    zoomed_tile_size = ceil(tile_size * zoom)
-    actual_zoom = zoomed_tile_size / tile_size
+    i = max(0, floor((mozyq.nrow - span_row) / 2))
+    j = max(0, ceil((mozyq.nrow + span_row) / 2))
+
+    tile_width = master_width // mozyq.ncol
+    tile_height = master_height // mozyq.nrow
+
+    assert tile_width * mozyq.ncol == master_width
+    assert tile_height * mozyq.nrow == master_height
+
+    zoomed_tile_size = max(ceil(tile_width * zoom), ceil(tile_height * zoom))
+    actual_zoom = zoomed_tile_size / max(tile_width, tile_height)
     assert actual_zoom >= zoom
 
     patch = build_patch(
@@ -57,7 +71,7 @@ def build_frame_from_patch(mozyq: Mozyq, master_size: int, zoom: float):
         (i, j),
         zoomed_tile_size)
 
-    if actual_zoom > tile_size:
+    if actual_zoom > max(tile_width, tile_height):
         # Implement interpolation using cv2.resize
         scale_factor = zoom / actual_zoom
         new_size = (int(patch.shape[2] * scale_factor),
@@ -69,28 +83,32 @@ def build_frame_from_patch(mozyq: Mozyq, master_size: int, zoom: float):
         # Convert back to CHW
         patch = np.transpose(resized_hwc, (2, 0, 1))
 
-    return center_crop(patch, [master_size, master_size])
+    return center_crop(patch, [master_height, master_width])
 
 
 def build_frame(
         mozyq: Mozyq,
-        master_size: int, *,
+        master_width: int,
+        master_height: int, *,
         zoom: float,
         alpha: float):
 
     if zoom <= FULL_GRID_MAX_ZOOM:
-        grid = build_full_grid(mozyq, master_size * FULL_GRID_MAX_ZOOM)
-        grid = safe_resize(grid, master_size * zoom)
-        grid = center_crop(grid, [master_size, master_size])
+        grid = build_full_grid(
+            mozyq, master_width * FULL_GRID_MAX_ZOOM, master_height * FULL_GRID_MAX_ZOOM)
+        grid = safe_resize(grid, master_width * zoom, master_height * zoom)
+        grid = center_crop(grid, [master_height, master_width])
 
     else:
-        grid = build_frame_from_patch(mozyq, master_size, zoom)
+        grid = build_frame_from_patch(mozyq, master_width, master_height, zoom)
 
-    master = load_img_any_size(mozyq.master, master_size)
-    master_patch_size = round(master_size / zoom)
-    master_patch_size += master_patch_size % 2
-    master = center_crop(master, [master_patch_size, master_patch_size])
-    master = safe_resize(master,  master_size)
+    master = load_img_any_size(mozyq.master, master_width, master_height)
+    master_patch_width = round(master_width / zoom)
+    master_patch_height = round(master_height / zoom)
+    master_patch_width += master_patch_width % 2
+    master_patch_height += master_patch_height % 2
+    master = center_crop(master, [master_patch_height, master_patch_width])
+    master = safe_resize(master, master_width, master_height)
 
     blend = alpha * master + (1 - alpha) * grid
     return blend.astype(np.uint8)
@@ -114,20 +132,24 @@ def alphas(steps: int, p=0.8):
 
 def build_transition(
         mozyq: Mozyq,
-        master_size: int, *,
+        master_width: int,
+        master_height: int, *,
         zooms: np.ndarray,
         alphas: np.ndarray):
 
     assert len(zooms) == len(alphas), \
         f'len(zooms) != len(alphas) {len(zooms)} != {len(alphas)}'
 
-    tile_size = master_size // mozyq.nrow
+    tile_width = master_width // mozyq.ncol
+    tile_height = master_height // mozyq.nrow
 
-    assert mozyq.nrow * tile_size == master_size, \
-        f'{mozyq.nrow} * {tile_size} != {master_size}'
+    assert mozyq.ncol * tile_width == master_width, \
+        f'{mozyq.ncol} * {tile_width} != {master_width}'
+    assert mozyq.nrow * tile_height == master_height, \
+        f'{mozyq.nrow} * {tile_height} != {master_height}'
 
     return (
-        build_frame(mozyq, master_size, zoom=zoom, alpha=alpha)
+        build_frame(mozyq, master_width, master_height, zoom=zoom, alpha=alpha)
         for zoom, alpha in zip(zooms, alphas))
 
 
@@ -183,8 +205,9 @@ def build_video(
         for mozyq in video.mozyqs:
             transition = build_transition(
                 mozyq,
-                video.master_size,
-                zooms=zooms(mozyq.nrow, steps_per_transition),
+                video.master_width,
+                video.master_height,
+                zooms=zooms(max(mozyq.nrow, mozyq.ncol), steps_per_transition),
                 alphas=alphas(steps_per_transition))
 
             for img in transition:
@@ -197,7 +220,7 @@ def build_video(
             total=len(video.mozyqs) * steps_per_transition),
 
         video_mp4,
-        video.master_size,
-        video.master_size,
+        video.master_width,
+        video.master_height,
         crf=crf,
         preset=preset)

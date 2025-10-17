@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Annotated, cast, get_args
+from typing import Annotated, get_args
 
 import typer
 
-from mozyq.types import Preset
+from mozyq.mozyq_types import Preset
 
 app = typer.Typer()
 
@@ -20,60 +20,47 @@ def preset_completion():
     return get_args(Preset)
 
 
-@ app.command()
+@app.command()
 def mzq(
         seed: Annotated[
             Path,
             typer.Argument(autocompletion=path_completion)],
 
-        video_mp4: Annotated[
-            Path,
-            typer.Option(
-                autocompletion=path_completion,
-                help='The output video file.')] = Path('video.mp4'),
-
-        resolution: Annotated[
+        width: Annotated[
             int,
             typer.Option(
-                help='The output resolution')] = 630,
+                help='The output width (overrides resolution for rectangular videos)')] = 630,
 
-        tile_size: Annotated[
+        height: Annotated[
             int,
             typer.Option(
-                help='The size of each tile. The resolution must be devisable by the tile size. And there should be an odd number of tiles.')] = 30,
+                help='The output height (overrides resolution for rectangular videos)')] = 630,
 
-        transitions: int = 10,
-        fps: int = 180,
-        crf: int = 18,
-        preset: Annotated[
-            str,
+        num_tiles: Annotated[
+            int,
             typer.Option(
-                autocompletion=preset_completion,
-                help='The x264 preset to use.')] = 'medium'):
+                help='The number of tiles in the grid. Must be odd and must divide evenly into the video dimensions.')] = 21,
+
+        max_transitions: int = 10,
+        output_json: Path = Path('mzq.json')
+):
     '''
     Create a video from a seed image. The seed image is assumed to be in a folder with other photos.
-    Usually you should have at least 1,000 of size at least 630x630 pixels.
+    Usually you should have at least 1,000 photos of size at least 630x630 pixels.
+    For rectangular videos, specify both width and height, or just resolution for square videos.
     '''
-    from mozyq.mzq import save_video_json as svj
-    from mozyq.vid import build_video as bv
+    from mozyq.mzq import gen_mzq_json
 
-    video_mp4.parent.mkdir(parents=True, exist_ok=True)
-    video_json = video_mp4.with_suffix('.json')
-
-    svj(
+    # Determine final dimensions
+    gen_mzq_json(
         seed=seed,
         tile_folder=seed.parent,
-        master_size=resolution,
-        tile_size=tile_size,
-        num_transitions=transitions,
-        video_json=video_json)
-
-    bv(
-        video_json=video_json,
-        video_mp4=video_mp4,
-        steps_per_transition=fps,
-        crf=crf,
-        preset=cast(Preset, preset))
+        master_width=width,
+        master_height=height,
+        tile_width=tile_width,
+        num_transitions=max_transitions,
+        output_json=output_json,
+        grid_shape=grid_shape)
 
 
 def main():

@@ -1,72 +1,57 @@
 import json
-from math import sqrt
 from pathlib import Path
-from uuid import uuid4
 
 import numpy as np
-from attr import dataclass
 from attrs import frozen
-from cattrs import unstructure
-from scipy.optimize import linear_sum_assignment as lsa
+from cattr import unstructure
+from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
+from skimage.util import view_as_blocks
 from tqdm import tqdm
 
-from mozyq.io import load_img_any_size, load_tiles
+from mozyq.io import load_tiles, read_image_lab
 
 
 @frozen
 class Mozyq:
-    uuid: str
     master: Path
     tiles: list[Path]
-
-    def __hash__(self) -> int:
-        return hash(self.uuid)
-
-    def __eq__(self, other) -> bool:
-        return self.uuid == other.uuid
-
-    @property
-    def nrow(self):
-        nrow = int(sqrt(len(self.tiles)))
-        assert nrow ** 2 == len(self.tiles), \
-            f'len(tiles) must be a perfect square {len(self.tiles)}'
-
-        return nrow
-
-    @property
-    def grid(self):
-        n = int(np.sqrt(len(self.tiles)))
-        assert n ** 2 == len(self.tiles), 'tiles must be square'
-        return np.array(self.tiles).reshape(n, n)
 
 
 class MozyqGenerator:
     def __init__(
-            self,
-            *,
+            self, *,
             paths: list[Path],
             vecs: np.ndarray,
-            tile_size: int):
+            tile_width: int,
+            tile_height: int,
+    ):
 
         assert vecs.ndim == 2, f'vectors must be 2D {vecs.shape}'
 
         _, s = vecs.shape
 
-        assert s == tile_size ** 2 * 3, \
-            f'vectors must be of size {tile_size ** 2 * 3}'
+        vec_size = tile_width * tile_height * 3
+        assert s == vec_size, \
+            f'vectors must be of size {vec_size}'
 
         self.paths = np.array(paths)
         self.vecs = vecs
-        self.tile_size = tile_size
+        self.tile_width = tile_width
+        self.tile_height = tile_height
 
     @classmethod
-    def from_folder(cls, folder: Path, *, tile_size: int):
+    def from_folder(
+            cls, folder: Path, *,
+            tile_width: int,
+            tile_height: int,):
+
         ps = sorted(list(folder.glob('*.jpg')))
 
         tiles = load_tiles(
             tqdm(ps, desc='reading tiles'),
-            tile_size)
+            tile_width=tile_width,
+            tile_height=tile_height)
 
         vecs = [
             tile.ravel().astype(np.float32)
@@ -74,90 +59,77 @@ class MozyqGenerator:
 
         vecs = np.stack(vecs)
 
-        return cls(paths=ps, vecs=vecs, tile_size=tile_size)
+        return cls(
+            paths=ps,
+            vecs=vecs,
+            tile_width=tile_width,
+            tile_height=tile_height)
 
-    def generate(self, master: np.ndarray) -> np.ndarray:
-        c, h, w = master.shape
+    def generate(self, master: np.ndarray):
+        h, w, c = master.shape
 
-        assert c == 3, 'master image must be RGB'
-        assert h == w, 'master image must be square'
-        assert h % self.tile_size == 0, \
-            f'master image must be divisible by tile_size {master.shape}'
-
-        assert h % 2 == 0, 'master image must be even'
+        assert c == 3, 'master image must be LAB'
+        assert h % 2 == 0, 'master image height must be even'
+        assert w % 2 == 0, 'master image width must be even'
         assert master.size <= self.vecs.size, 'master image too large'
-
-        # Implement unfold operation for extracting patches
-        def unfold_patches(img, kernel_size, stride):
-            _, h, w = img.shape
-            out_h = (h - kernel_size) // stride + 1
-            out_w = (w - kernel_size) // stride + 1
-
-            patches = []
-            for i in range(out_h):
-                for j in range(out_w):
-                    h_start = i * stride
-                    w_start = j * stride
-                    patch = img[:, h_start:h_start+kernel_size,
-                                w_start:w_start+kernel_size]
-                    patches.append(patch.ravel())
-
-            return np.array(patches)
 
         master = master.astype(np.float32)
 
-        targets = unfold_patches(master, self.tile_size, self.tile_size)
+        targets = view_as_blocks(
+            master,
+            block_shape=(self.tile_height, self.tile_width, 3)
+        ).reshape(-1, self.tile_height * self.tile_width * 3)
+
+        def dist(tile, patch):
+            return np.linalg.norm(tile - patch)
 
         # Compute distance matrix using scipy
-        d = cdist(self.vecs, targets)
-        rid, cid = lsa(d)
+        d = cdist(self.vecs, targets, metric=dist)
+        rid, cid = linear_sum_assignment(d)
 
         # Sort indices
-        ids = np.argsort(cid)
-        return self.paths[rid][ids]
+        return self.paths[rid][np.argsort(cid)]
 
 
-@dataclass
-class Video:
-    master_size: int
-    mozyqs: list[Mozyq]
+def gen_mzq_json(
+        *,
+        master: Path,
+        width: int,
+        height: int,
+        num_tiles: int,
+        output_json: Path):
 
+    assert num_tiles % 2 == 1, 'num_tiles must be odd'
+    assert width % 2 == 0, 'width must be even'
+    assert height % 2 == 0, 'height must be even'
+    assert width % num_tiles == 0, 'width must be divisible by num_tiles'
+    assert height % num_tiles == 0, 'height must be divisible by num_tiles'
 
-def save_video_json(
-        *, seed: Path,
-        tile_folder: Path,
-        master_size: int,
-        tile_size: int,
-        num_transitions: int,
-        video_json: Path):
-
-    assert master_size % 2 == 0, 'target_size must be even'
-    assert master_size % tile_size == 0, 'target_size must be divisible by tile_size'
+    tile_folder = master.parent
+    tile_width = width // num_tiles
+    tile_height = height // num_tiles
 
     gen = MozyqGenerator.from_folder(
         tile_folder,
-        tile_size=tile_size)
+        tile_width=tile_width,
+        tile_height=tile_height)
 
-    mozyqs: list[Mozyq] = []
+    # GENERATE
+    paths = gen.generate(read_image_lab(master))
 
-    for _ in range(num_transitions):
-        tiles = gen.generate(load_img_any_size(seed, master_size))
+    # WRITE JSON
+    m = Mozyq(master=master, tiles=paths.tolist())
+    with output_json.open('w') as f:
+        json.dump(unstructure(m), f)
 
-        mozyq = Mozyq(
-            uuid=uuid4().hex,
-            master=seed,
-            tiles=tiles.tolist())
+    print(f'Wrote Mozyq JSON to {output_json}')
 
-        assert len(tiles) % 2 == 1, 'len(tiles) must be odd'
 
-        seed = tiles[len(tiles) // 2]
-
-        mozyqs.append(mozyq)
-
-    video = Video(
-        master_size=master_size,
-        mozyqs=mozyqs[::-1])
-
-    with open(video_json, 'w') as f:
-        video = unstructure(video)
-        print(json.dumps(video), file=f)
+if __name__ == '__main__':
+    gen_mzq_json(
+        master=Path('./normalized/0000.jpg'),
+        width=600,
+        height=750,
+        num_tiles=15,
+        output_json=Path('./output.json')
+    )
