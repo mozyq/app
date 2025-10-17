@@ -59,8 +59,6 @@ class MozyqGenerator:
 
         vecs = np.stack(vecs)
 
-        print('Vecs, shape:', vecs.shape)
-
         return cls(
             paths=ps,
             vecs=vecs,
@@ -82,19 +80,11 @@ class MozyqGenerator:
             block_shape=(self.tile_height, self.tile_width, 3)
         ).reshape(-1, self.tile_height * self.tile_width * 3)
 
-        write_jpeg(
-            self.vecs[0].reshape(
-                self.tile_height,
-                self.tile_width, 3).astype(np.uint8),
-            path='debug_tile.jpg'
-        )
-
         def dist(tile, patch):
             return np.linalg.norm(tile - patch)
 
         # Compute distance matrix using scipy
         d = cdist(self.vecs, targets, metric=dist)
-        print(d.shape)
         rid, cid = linear_sum_assignment(d)
 
         # Sort indices
@@ -127,7 +117,7 @@ def gen_mzq_json(
 
     masters = set()
     mzqs: list[Mozyq] = []
-    for _ in range(max_transitions):
+    for _ in tqdm(range(max_transitions)):
         if master in masters:
             print(f'Master {master} already used, stopping generation')
             break
@@ -164,7 +154,6 @@ def blocks(
 
     for i, block in enumerate(blocks.reshape(-1, h // num_blocks, w // num_blocks, 3)):
         block_path = output_folder / f'block_{i:03d}.jpg'
-        from mozyq.io import write_jpeg
         write_jpeg(block.astype(np.uint8), str(block_path))
 
 
