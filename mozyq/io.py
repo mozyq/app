@@ -1,4 +1,4 @@
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Iterable
 
@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 
-@lru_cache(maxsize=500)
+@cache
 def read_image_lab(path: Path) -> np.ndarray:
     """Read image and convert to LAB color space in CHW format with values 0-255"""
     img = cv2.imread(str(path))

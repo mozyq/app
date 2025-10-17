@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from mozyq.io import read_image_lab, write_jpeg
 from mozyq.mzq import Mozyq
+from mozyq.util import timer
 
 
 def crop_zoom(master: np.ndarray, zoom: float):
@@ -141,11 +142,25 @@ def frames(mzq: list[Mozyq], out_folder: Path):
             i += 1
 
 
-if __name__ == '__main__':
+def read_all(mzq: list[Mozyq]):
+    for mozyq in mzq:
+        yield read_image_lab(mozyq.master)
+        for tile_path in mozyq.tiles:
+            yield read_image_lab(tile_path)
 
+
+if __name__ == '__main__':
+    import psutil
     with open('output.json') as f:
         mzqs = [
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
 
-    frames(mzqs, Path('./frames'))
+    with timer('Reading all images'):
+        for img in tqdm(read_all(mzqs)):
+            pass
+    # frames(mzqs, Path('./frames'))
+
+    process = psutil.Process()
+    mem = process.memory_info().rss / (1024 * 1024)  # in MB
+    print(f"Memory usage: {mem:.2f} MB")
