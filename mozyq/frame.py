@@ -60,9 +60,11 @@ def scale_down_crop(
     return grid, grid[i:i + crop_height, j:j + crop_width]
 
 
-def mzq(
-        tiles: list[np.ndarray], *,
-        scales: Iterable[float]):
+def frames(
+        *,
+        master: np.ndarray,
+        tiles: list[np.ndarray],
+        zooms: Iterable[float]):
 
     d = int(sqrt(len(tiles)))
     assert d ** 2 == len(tiles), 'Tiles length must be a perfect square'
@@ -77,7 +79,12 @@ def mzq(
     h, w, _ = grid.shape
     crop_height = h // d
     crop_width = w // d
-    for scale in tqdm(scales):
+
+    max_zoom = max(zooms)
+    for zoom in zooms:
+        alpha = (1 / zoom) / 2
+        scale = zoom / max_zoom
+        target = crop_zoom(master, zoom)
         grid, crop = scale_down_crop(
             grid,
             grid_height=ceil(h * scale),
@@ -85,26 +92,22 @@ def mzq(
             crop_height=crop_height,
             crop_width=crop_width)
 
-        yield crop
+        yield (1 - alpha) * crop + alpha * target
+
+    for beta in np.linspace(alpha, 1, 30):
+        yield (1 - beta) * crop + beta * target
 
 
-def frames(
-        master: np.ndarray, *,
-        zooms: Iterable[float],
-):
-
-    for zoom in zooms:
-        yield crop_zoom(master, zoom)
-
-
-def ease_out(s: float, e: float, n: int = 60):
+def ease_out(s: float, e: float, n: int = 90, p: float = .3):
     """Generate n values from s to e with ease-out effect"""
-    return np.array([s + (e - s) * (1 - (1 - t) ** 3) for t in np.linspace(0, 1, n)])
+    return np.array([
+        s + (e - s) * t ** p
+        for t in np.linspace(0, 1, n)])
 
 
 if __name__ == '__main__':
     max_zoom = 15
-    zooms = ease_out(max_zoom, 1, 60)
+    zooms = ease_out(max_zoom, 1)
 
     with open('output.json') as f:
         mzqs = [
@@ -123,5 +126,10 @@ if __name__ == '__main__':
     # for i, frame in enumerate(frames(master, zooms=zooms)):
     #     write_jpeg(frame.astype(np.uint8), out / f'frame_{i:03d}.jpg')
 
-    for i, crop in enumerate(mzq(tiles, scales=zooms / max_zoom)):
+    fs = frames(
+        master=master,
+        tiles=tiles,
+        zooms=zooms)
+
+    for i, crop in enumerate(tqdm(fs)):
         write_jpeg(crop.astype(np.uint8), out / f'{i:03d}.jpg')
