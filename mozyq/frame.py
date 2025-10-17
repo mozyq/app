@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from mozyq.io import read_image_lab, write_jpeg
 from mozyq.mzq import Mozyq
-from mozyq.util import timer
+from mozyq.util import center_crop
 
 
 def crop_zoom(master: np.ndarray, zoom: float):
@@ -46,25 +46,42 @@ def crop_zoom(master: np.ndarray, zoom: float):
     return zoomed
 
 
-def scale_down_crop(
+def smart_scale_down_crop(
         grid: np.ndarray, *,
         grid_height: int,
         grid_width: int,
         crop_height: int,
         crop_width: int):
 
+    out_height = crop_height
+    out_width = crop_width
     grid_height += grid_height % 2  # Make even
     grid_width += grid_width % 2  # Make even
 
-    grid = cv2.resize(
-        grid,
-        (grid_width, grid_height),
+    h, *_ = grid.shape
+    scale = grid_height / h
+
+    if scale < .5:
+        grid = cv2.resize(
+            grid,
+            (grid_width, grid_height),
+            interpolation=cv2.INTER_AREA)
+
+    else:
+        crop_height = ceil(crop_height / scale)
+        crop_width = ceil(crop_width / scale)
+
+    crop = center_crop(
+        img=grid,
+        height=crop_height,
+        width=crop_width)
+
+    crop = cv2.resize(
+        crop,
+        (out_width, out_height),
         interpolation=cv2.INTER_AREA)
 
-    i = (grid_height - crop_height) // 2
-    j = (grid_width - crop_width) // 2
-
-    return grid, grid[i:i + crop_height, j:j + crop_width]
+    return grid, crop
 
 
 def ease(s: float, e: float, n: int = 90):
@@ -103,7 +120,7 @@ def step(
         alpha = (1 / zoom) / 2
         target = crop_zoom(master, zoom)
         scale = zoom / max_zoom
-        grid, crop = scale_down_crop(
+        grid, crop = smart_scale_down_crop(
             grid,
             grid_height=ceil(h * scale),
             grid_width=ceil(w * scale),
@@ -150,17 +167,9 @@ def read_all(mzq: list[Mozyq]):
 
 
 if __name__ == '__main__':
-    import psutil
     with open('output.json') as f:
         mzqs = [
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
 
-    with timer('Reading all images'):
-        for img in tqdm(read_all(mzqs)):
-            pass
-    # frames(mzqs, Path('./frames'))
-
-    process = psutil.Process()
-    mem = process.memory_info().rss / (1024 * 1024)  # in MB
-    print(f"Memory usage: {mem:.2f} MB")
+    frames(mzqs, Path('./frames'))
