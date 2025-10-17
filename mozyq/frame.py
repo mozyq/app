@@ -24,6 +24,9 @@ def crop_zoom(master: np.ndarray, zoom: float):
     crop_h = int(h / zoom)
     crop_w = int(w / zoom)
 
+    crop_h += crop_h % 2  # Make even
+    crop_w += crop_w % 2  # Make even
+
     # Calculate crop offsets (center crop)
     i = (h - crop_h) // 2
     j = (w - crop_w) // 2
@@ -60,7 +63,18 @@ def scale_down_crop(
     return grid, grid[i:i + crop_height, j:j + crop_width]
 
 
-def frames(
+def ease(s: float, e: float, n: int = 90):
+    """Generate n values from s to e with ease-out effect"""
+    t = np.linspace(0, 1, n)
+    t = np.where(
+        t < 0.5,
+        4 * t**3,
+        1 - (-2 * t + 2)**3 / 2)
+
+    return s + (e - s) * t
+
+
+def step(
         *,
         master: np.ndarray,
         tiles: list[np.ndarray],
@@ -98,15 +112,30 @@ def frames(
         yield (1 - beta) * crop + beta * target
 
 
-def ease(s: float, e: float, n: int = 90):
-    """Generate n values from s to e with ease-out effect"""
-    t = np.linspace(0, 1, n)
-    t = np.where(
-        t < 0.5,
-        4 * t**3,
-        1 - (-2 * t + 2)**3 / 2)
+def frames(mzq: list[Mozyq], out_folder: Path):
+    out_folder.mkdir(parents=True, exist_ok=True)
 
-    return s + (e - s) * t
+    i = 0
+    for mozyq in mzq:
+        max_zoom = int(sqrt(len(mozyq.tiles)))
+        zooms = ease(max_zoom, 1)
+
+        master = read_image_lab(mozyq.master)
+        tiles = [
+            read_image_lab(tile_path)
+            for tile_path in mozyq.tiles]
+
+        fs = step(
+            master=master,
+            tiles=tiles,
+            zooms=zooms)
+
+        for frame in tqdm(fs):
+            write_jpeg(
+                frame.astype(np.uint8),
+                out_folder / f'{i:04d}.jpg')
+
+            i += 1
 
 
 if __name__ == '__main__':
@@ -116,27 +145,4 @@ if __name__ == '__main__':
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
 
-    mzq = mzqs[0]
-    max_zoom = int(sqrt(len(mzq.tiles)))
-    print(f'Max zoom: {max_zoom}')
-    zooms = ease(max_zoom, 1)
-
-    out = Path('dbg/frames')
-    out.mkdir(parents=True, exist_ok=True)
-
-    master = read_image_lab(mzq.master)
-    tiles = [
-        read_image_lab(tile_path)
-        for tile_path in mzq.tiles
-    ]
-
-    # for i, frame in enumerate(frames(master, zooms=zooms)):
-    #     write_jpeg(frame.astype(np.uint8), out / f'frame_{i:03d}.jpg')
-
-    fs = frames(
-        master=master,
-        tiles=tiles,
-        zooms=zooms)
-
-    for i, crop in enumerate(tqdm(fs)):
-        write_jpeg(crop.astype(np.uint8), out / f'{i:03d}.jpg')
+    frames(mzqs, Path('./frames'))
