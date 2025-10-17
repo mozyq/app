@@ -18,9 +18,13 @@ def center_crop(
         height: int,
         width: int):
 
-    height += height % 2  # Make even
-    width += width % 2  # Make even
+    height -= height % 2  # Make even
+    width -= width % 2  # Make even
     h, w, _ = img.shape
+
+    assert (height <= h) and (width <= w), \
+        f'Crop size must be <= image size: {height}x{width} <= {h}x{w}'
+
     i = (h - height) // 2
     j = (w - width) // 2
     return img[i:i + height, j:j + width]

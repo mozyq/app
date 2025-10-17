@@ -76,10 +76,11 @@ def smart_scale_down_crop(
         height=crop_height,
         width=crop_width)
 
-    crop = cv2.resize(
-        crop,
-        (out_width, out_height),
-        interpolation=cv2.INTER_AREA)
+    if scale >= .5:
+        crop = cv2.resize(
+            crop,
+            (out_width, out_height),
+            interpolation=cv2.INTER_AREA)
 
     return grid, crop
 
