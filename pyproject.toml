@@ -11,19 +11,19 @@ readme = "README.md"
 
 
 [tool.poetry.group.dev.dependencies]
-pyright = "^1.1.375"
-pytest = "^8.3.2"
+pyright = "^1.1"
+pytest = "^8.3"
 
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-cattrs = "^23.2.3"
-opencv-python = "^4.10.0.84"
-scipy = "^1.14.0"
-torchaudio = "^2.4.0"
-torchvision = "^0.19.0"
+cattrs = "^23.2"
+opencv-python = "^4.10"
+scipy = "^1.14"
 tqdm = "^4.66.5"
 typer = "^0.12.3"
+pillow = "^10.0.0"
+ffmpeg-python = "^0.2.0"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.8.0"

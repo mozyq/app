@@ -1,18 +1,18 @@
 import json
+import os
+import tempfile
 import typing
 from functools import lru_cache
 from math import ceil, floor
 from pathlib import Path
 
+import cv2
+import ffmpeg
 import numpy as np
-import torch
 from cattrs import structure
-from torch.nn.functional import interpolate
-from torchvision.transforms.functional import center_crop
-from torio.io import StreamingMediaEncoder
 from tqdm import tqdm
 
-from mozyq.io import load_grid, load_img_any_size, safe_resize
+from mozyq.io import center_crop, load_grid, load_img_any_size, safe_resize
 from mozyq.mzq import Mozyq, Video
 from mozyq.types import Preset
 
@@ -58,9 +58,16 @@ def build_frame_from_patch(mozyq: Mozyq, master_size: int, zoom: float):
         zoomed_tile_size)
 
     if actual_zoom > tile_size:
-        patch = interpolate(
-            patch[None],
-            scale_factor=zoom / actual_zoom).squeeze()
+        # Implement interpolation using cv2.resize
+        scale_factor = zoom / actual_zoom
+        new_size = (int(patch.shape[2] * scale_factor),
+                    int(patch.shape[1] * scale_factor))
+        # Convert CHW to HWC for cv2
+        patch_hwc = np.transpose(patch, (1, 2, 0))
+        resized_hwc = cv2.resize(
+            patch_hwc, new_size, interpolation=cv2.INTER_LINEAR)
+        # Convert back to CHW
+        patch = np.transpose(resized_hwc, (2, 0, 1))
 
     return center_crop(patch, [master_size, master_size])
 
@@ -86,7 +93,7 @@ def build_frame(
     master = safe_resize(master,  master_size)
 
     blend = alpha * master + (1 - alpha) * grid
-    return blend.to(torch.uint8)
+    return blend.astype(np.uint8)
 
 
 def zooms(start: int, steps: int, b=2, end=11, eps=.01):
@@ -125,27 +132,39 @@ def build_transition(
 
 
 def save_video(
-        frames: typing.Iterable[torch.Tensor],
+        frames: typing.Iterable[np.ndarray],
         video_mp4: Path,
         width: int,
         height: int,
         crf: int,
         preset: Preset):
 
-    out_stream = StreamingMediaEncoder(video_mp4)
+    # Create temporary directory for frame images
+    with tempfile.TemporaryDirectory() as temp_dir:
+        frame_paths = []
 
-    out_stream.add_video_stream(
-        frame_rate=30,
-        width=width,
-        height=height,
-        encoder='libx264',
-        encoder_option={
-            'crf': f'{crf}',
-            'preset': preset})
+        # Save each frame as an image
+        for i, frame in enumerate(frames):
+            frame_path = os.path.join(temp_dir, f"frame_{i:06d}.png")
+            frame_paths.append(frame_path)
 
-    with out_stream.open():
-        for frame in frames:
-            out_stream.write_video_chunk(0, frame[None])
+            # Convert numpy array from CHW to HWC
+            frame_np = np.transpose(frame, (1, 2, 0))
+
+            # Save using OpenCV
+            import cv2
+            cv2.imwrite(frame_path, cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR))
+
+        # Create video from frames using ffmpeg
+        if frame_paths:
+            input_pattern = os.path.join(temp_dir, "frame_%06d.png")
+            (
+                ffmpeg
+                .input(input_pattern, framerate=30)
+                .output(str(video_mp4), vcodec='libx264', crf=crf, preset=preset)
+                .overwrite_output()
+                .run(quiet=True)
+            )
 
 
 def build_video(

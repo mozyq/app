@@ -4,13 +4,11 @@ from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
-import torch
 from attr import dataclass
 from attrs import frozen
 from cattrs import unstructure
 from scipy.optimize import linear_sum_assignment as lsa
-from torch import Tensor
-from torch.nn import Unfold
+from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
 from mozyq.io import load_img_any_size, load_tiles
@@ -48,10 +46,10 @@ class MozyqGenerator:
             self,
             *,
             paths: list[Path],
-            vecs: Tensor,
+            vecs: np.ndarray,
             tile_size: int):
 
-        assert vecs.dim() == 2, f'vectors must be 2D {vecs.shape}'
+        assert vecs.ndim == 2, f'vectors must be 2D {vecs.shape}'
 
         _, s = vecs.shape
 
@@ -71,14 +69,14 @@ class MozyqGenerator:
             tile_size)
 
         vecs = [
-            tile.ravel().to(torch.float32)
+            tile.ravel().astype(np.float32)
             for tile in tqdm(tiles, desc='vectorizing tiles')]
 
-        vecs = torch.stack(vecs)
+        vecs = np.stack(vecs)
 
         return cls(paths=ps, vecs=vecs, tile_size=tile_size)
 
-    def generate(self, master: Tensor) -> np.ndarray:
+    def generate(self, master: np.ndarray) -> np.ndarray:
         c, h, w = master.shape
 
         assert c == 3, 'master image must be RGB'
@@ -87,20 +85,35 @@ class MozyqGenerator:
             f'master image must be divisible by tile_size {master.shape}'
 
         assert h % 2 == 0, 'master image must be even'
-        assert master.nelement() <= self.vecs.nelement(), 'master image too large'
+        assert master.size <= self.vecs.size, 'master image too large'
 
-        unfold = Unfold(
-            kernel_size=self.tile_size,
-            stride=self.tile_size)
+        # Implement unfold operation for extracting patches
+        def unfold_patches(img, kernel_size, stride):
+            _, h, w = img.shape
+            out_h = (h - kernel_size) // stride + 1
+            out_w = (w - kernel_size) // stride + 1
 
-        master = master.to(torch.float32)
+            patches = []
+            for i in range(out_h):
+                for j in range(out_w):
+                    h_start = i * stride
+                    w_start = j * stride
+                    patch = img[:, h_start:h_start+kernel_size,
+                                w_start:w_start+kernel_size]
+                    patches.append(patch.ravel())
 
-        targets = unfold(master.unsqueeze(0)).squeeze(0).T
+            return np.array(patches)
 
-        d = torch.cdist(self.vecs[None], targets[None]).squeeze()
-        rid, cid = lsa(d.numpy())
+        master = master.astype(np.float32)
 
-        _, ids = torch.sort(torch.asarray(cid))
+        targets = unfold_patches(master, self.tile_size, self.tile_size)
+
+        # Compute distance matrix using scipy
+        d = cdist(self.vecs, targets)
+        rid, cid = lsa(d)
+
+        # Sort indices
+        ids = np.argsort(cid)
         return self.paths[rid][ids]
 
 
