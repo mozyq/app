@@ -11,12 +11,11 @@ from PIL import Image
 def read_image_lab(path: Path) -> np.ndarray:
     """Read image and convert to LAB color space in CHW format with values 0-255"""
     img = cv2.imread(str(path))
-    if img is None:
-        raise ValueError(f"Could not read image from {path}")
+
+    assert img is not None, f"Could not read image from {path}"
+
     # Convert BGR (OpenCV default) → LAB
     img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    # Convert from HWC to CHW format
-    # img_array = np.transpose(img, (2, 0, 1)).astype(np.uint8)
     return img
 
 
@@ -31,16 +30,10 @@ def resize(
     inter = cv2.INTER_LANCZOS4 if (width < w or height < h) else cv2.INTER_AREA
 
     # Resize using OpenCV
-    resized = cv2.resize(
+    return cv2.resize(
         img,
         (width, height),
         interpolation=inter)
-
-    # Convert back to CHW format
-    if len(resized.shape) == 2:
-        resized = resized[:, :, None]
-
-    return np.transpose(resized, (2, 0, 1)).astype(img.dtype)
 
 
 def center_crop(img: np.ndarray, size: list[int]) -> np.ndarray:
@@ -59,25 +52,21 @@ def load_tiles(
         tile_width: int,
         tile_height: int):
 
+    dbg = Path('dbg')
+    dbg.mkdir(parents=True, exist_ok=True)
+
     for path in paths:
         tile = read_image_lab(path)
         yield resize(tile, width=tile_width, height=tile_height)
 
 
 # TODO
-def write_jpeg(img: np.ndarray, path: str, quality: int = 90):
+def write_jpeg(img: np.ndarray, path: str | Path, quality: int = 90):
     """Write numpy array image to JPEG file"""
-    # Convert from CHW to HWC
-    if img.ndim == 3:
-        img_np = np.transpose(img, (1, 2, 0))
-    else:
-        img_np = img
+    assert img.shape[-1] == 3, 'Expecting LAB image'
 
-    # Convert to PIL and save as JPEG
-    if img_np.dtype != np.uint8:
-        img_np = img_np.astype(np.uint8)
-
-    pil_img = Image.fromarray(img_np)
+    img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
+    pil_img = Image.fromarray(img)
     pil_img.save(path, 'JPEG', quality=quality)
 
 
@@ -223,3 +212,12 @@ def load_grid(paths: list[Path], tile_size: int, grid_shape: tuple[int, int] | N
         nrow=nrow,
         ncol=ncol,
         padding=0)
+
+
+if __name__ == '__main__':
+    tiles = Path('blocks').glob('*.jpg')
+    load_tiles(
+        tiles,
+        tile_width=150,
+        tile_height=120
+    )

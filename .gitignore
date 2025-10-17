@@ -13,6 +13,6 @@ dist
 *.log
 *.json
 *.webp
-
+*.html
 
 !readme.mp4

@@ -9,7 +9,7 @@ from scipy.spatial.distance import cdist
 from skimage.util import view_as_blocks
 from tqdm import tqdm
 
-from mozyq.io import load_tiles, read_image_lab
+from mozyq.io import load_tiles, read_image_lab, write_jpeg
 
 
 @frozen
@@ -59,6 +59,8 @@ class MozyqGenerator:
 
         vecs = np.stack(vecs)
 
+        print('Vecs, shape:', vecs.shape)
+
         return cls(
             paths=ps,
             vecs=vecs,
@@ -80,11 +82,22 @@ class MozyqGenerator:
             block_shape=(self.tile_height, self.tile_width, 3)
         ).reshape(-1, self.tile_height * self.tile_width * 3)
 
+        write_jpeg(
+            self.vecs[0].reshape(
+                self.tile_height,
+                self.tile_width, 3).astype(np.uint8),
+            path='debug_tile.jpg'
+        )
+
+        print('Vecs[0]:', self.vecs[0, :5])
+        print('Targets[0]:', targets[0, :5])
+
         def dist(tile, patch):
             return np.linalg.norm(tile - patch)
 
         # Compute distance matrix using scipy
         d = cdist(self.vecs, targets, metric=dist)
+        print(d.shape)
         rid, cid = linear_sum_assignment(d)
 
         # Sort indices
@@ -94,6 +107,7 @@ class MozyqGenerator:
 def gen_mzq_json(
         *,
         master: Path,
+        tile_folder: Path,
         width: int,
         height: int,
         num_tiles: int,
@@ -105,7 +119,6 @@ def gen_mzq_json(
     assert width % num_tiles == 0, 'width must be divisible by num_tiles'
     assert height % num_tiles == 0, 'height must be divisible by num_tiles'
 
-    tile_folder = master.parent
     tile_width = width // num_tiles
     tile_height = height // num_tiles
 
@@ -125,11 +138,45 @@ def gen_mzq_json(
     print(f'Wrote Mozyq JSON to {output_json}')
 
 
+def blocks(
+        img_jpg: Path, *,
+        num_blocks: int = 5,
+        output_folder: Path = Path('./blocks')):
+
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    img = read_image_lab(img_jpg)
+    h, w, c = img.shape
+    assert c == 3, 'image must be LAB'
+
+    blocks = view_as_blocks(
+        img, block_shape=(h // num_blocks, w // num_blocks, 3))
+
+    for i, block in enumerate(blocks.reshape(-1, h // num_blocks, w // num_blocks, 3)):
+        block_path = output_folder / f'block_{i:03d}.jpg'
+        from mozyq.io import write_jpeg
+        write_jpeg(block.astype(np.uint8), str(block_path))
+
+
 if __name__ == '__main__':
+    master = Path('./normalized/0000.jpg')
+    tile_folder = Path('./blocks')
+    # gen = MozyqGenerator.from_folder(
+    #     tile_folder,
+    #     tile_width=126,
+    #     tile_height=150,
+    # )
     gen_mzq_json(
-        master=Path('./normalized/0000.jpg'),
+        master=master,
+        tile_folder=master.parent,
         width=600,
         height=750,
         num_tiles=15,
         output_json=Path('./output.json')
     )
+
+    # blocks(
+    #     img_jpg=master,
+    #     num_blocks=5,
+    #     output_folder=Path('./blocks')
+    # )
