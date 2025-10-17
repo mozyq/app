@@ -83,8 +83,8 @@ def frames(
     max_zoom = max(zooms)
     for zoom in zooms:
         alpha = (1 / zoom) / 2
-        scale = zoom / max_zoom
         target = crop_zoom(master, zoom)
+        scale = zoom / max_zoom
         grid, crop = scale_down_crop(
             grid,
             grid_height=ceil(h * scale),
@@ -98,29 +98,36 @@ def frames(
         yield (1 - beta) * crop + beta * target
 
 
-def ease_out(s: float, e: float, n: int = 90, p: float = .3):
+def ease(s: float, e: float, n: int = 90):
     """Generate n values from s to e with ease-out effect"""
-    return np.array([
-        s + (e - s) * t ** p
-        for t in np.linspace(0, 1, n)])
+    t = np.linspace(0, 1, n)
+    t = np.where(
+        t < 0.5,
+        4 * t**3,
+        1 - (-2 * t + 2)**3 / 2)
+
+    return s + (e - s) * t
 
 
 if __name__ == '__main__':
-    max_zoom = 15
-    zooms = ease_out(max_zoom, 1)
 
     with open('output.json') as f:
         mzqs = [
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
 
+    mzq = mzqs[0]
+    max_zoom = int(sqrt(len(mzq.tiles)))
+    print(f'Max zoom: {max_zoom}')
+    zooms = ease(max_zoom, 1)
+
     out = Path('dbg/frames')
     out.mkdir(parents=True, exist_ok=True)
 
-    master = read_image_lab(mzqs[0].master)
+    master = read_image_lab(mzq.master)
     tiles = [
         read_image_lab(tile_path)
-        for tile_path in mzqs[0].tiles
+        for tile_path in mzq.tiles
     ]
 
     # for i, frame in enumerate(frames(master, zooms=zooms)):
