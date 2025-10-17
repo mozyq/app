@@ -130,7 +130,7 @@ def step(
 
         yield (1 - alpha) * crop + alpha * target
 
-    for beta in np.linspace(alpha, 1, 30):
+    for beta in np.linspace(alpha, 1, 15):
         yield (1 - beta) * crop + beta * target
 
 
