@@ -89,9 +89,6 @@ class MozyqGenerator:
             path='debug_tile.jpg'
         )
 
-        print('Vecs[0]:', self.vecs[0, :5])
-        print('Targets[0]:', targets[0, :5])
-
         def dist(tile, patch):
             return np.linalg.norm(tile - patch)
 
@@ -111,7 +108,8 @@ def gen_mzq_json(
         width: int,
         height: int,
         num_tiles: int,
-        output_json: Path):
+        output_json: Path,
+        num_transitions: int = 10,):
 
     assert num_tiles % 2 == 1, 'num_tiles must be odd'
     assert width % 2 == 0, 'width must be even'
@@ -127,13 +125,18 @@ def gen_mzq_json(
         tile_width=tile_width,
         tile_height=tile_height)
 
-    # GENERATE
-    paths = gen.generate(read_image_lab(master))
+    mzqs: list[Mozyq] = []
+    for _ in range(num_transitions):
+        # GENERATE
+        paths = gen.generate(read_image_lab(master))
+        mzqs.append(Mozyq(master=master, tiles=paths.tolist()))
+
+        # Use center tile as next master
+        master = paths[len(paths) // 2]
 
     # WRITE JSON
-    m = Mozyq(master=master, tiles=paths.tolist())
     with output_json.open('w') as f:
-        json.dump(unstructure(m), f)
+        json.dump(unstructure(mzqs), f)
 
     print(f'Wrote Mozyq JSON to {output_json}')
 
@@ -159,13 +162,9 @@ def blocks(
 
 
 if __name__ == '__main__':
-    master = Path('./normalized/0000.jpg')
+    master = Path('./normalized/0002.jpg')
     tile_folder = Path('./blocks')
-    # gen = MozyqGenerator.from_folder(
-    #     tile_folder,
-    #     tile_width=126,
-    #     tile_height=150,
-    # )
+
     gen_mzq_json(
         master=master,
         tile_folder=master.parent,
@@ -174,9 +173,3 @@ if __name__ == '__main__':
         num_tiles=15,
         output_json=Path('./output.json')
     )
-
-    # blocks(
-    #     img_jpg=master,
-    #     num_blocks=5,
-    #     output_folder=Path('./blocks')
-    # )
