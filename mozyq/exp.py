@@ -76,9 +76,9 @@ if __name__ == '__main__':
         img=dog,
         viewport_width=w,
         viewport_height=h,
-        offsetsX=np.array([0, .1, .2]),
-        offsetsY=np.array([0, .1, .2]),
-        scales=np.array([.4, .4, .4]))
+        offsetsX=np.array([0, .1, .2, .3]),
+        offsetsY=np.array([0, .1, .2, .3]),
+        scales=np.array([.8, .7, .6, .5]))
 
     for i, crop in enumerate(crops):
         path = frames / f'crop_{i:03d}.jpg'
