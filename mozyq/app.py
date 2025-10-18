@@ -1,3 +1,4 @@
+# https://names2023war.ynet.co.il/api/people/paginate?limit=2000&offset=0&search=
 from pathlib import Path
 from typing import Annotated
 

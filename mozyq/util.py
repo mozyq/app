@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from time import perf_counter
 
+import cv2
 import numpy as np
 
 
@@ -10,6 +11,19 @@ def timer(label=""):
     yield
     end = perf_counter()
     print(f"{label} took {(end - start)*1000:.2f} ms")
+
+
+def scale_down(img: np.ndarray, scale: float):
+    if scale == 1:
+        return img
+
+    assert 0 < scale < 1, "Scale must be in (0, 1) range"
+
+    h, w, _ = img.shape
+    nw = even(w * scale)
+    nh = even(h * scale)
+
+    return cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA)
 
 
 def center_crop(
@@ -28,3 +42,8 @@ def center_crop(
     i = (h - height) // 2
     j = (w - width) // 2
     return img[i:i + height, j:j + width]
+
+
+def even(val: int | float):
+    val = int(val)
+    return val + (val % 2)

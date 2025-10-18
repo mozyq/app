@@ -1,3 +1,4 @@
+# https://names2023war.ynet.co.il/api/people/paginate?limit=2000&offset=0&search=
 import json
 from math import ceil, sqrt
 from pathlib import Path
@@ -168,7 +169,7 @@ def read_all(mzq: list[Mozyq]):
 
 
 if __name__ == '__main__':
-    with open('output.json') as f:
+    with open('mzq.json') as f:
         mzqs = [
             structure(mzq, Mozyq)
             for mzq in json.load(f)]
