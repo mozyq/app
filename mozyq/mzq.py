@@ -158,7 +158,7 @@ def blocks(
 
 
 if __name__ == '__main__':
-    master = Path('./normalized/0519.jpg')
+    master = Path('./normalized/0518.jpg')
     tile_folder = Path('./blocks')
 
     gen_mzq_json(

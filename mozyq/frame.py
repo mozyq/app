@@ -118,7 +118,7 @@ def step(
 
     max_zoom = max(zooms)
     for zoom in zooms:
-        alpha = (1 / zoom) * 0.7
+        alpha = (1 / zoom) * 0.3
         target = crop_zoom(master, zoom)
         scale = zoom / max_zoom
         grid, crop = smart_scale_down_crop(
@@ -130,7 +130,7 @@ def step(
 
         yield (1 - alpha) * crop + alpha * target
 
-    for beta in np.linspace(alpha, 1, 15):
+    for beta in np.linspace(alpha, 1, 30):
         yield (1 - beta) * crop + beta * target
 
 
