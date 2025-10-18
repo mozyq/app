@@ -15,16 +15,16 @@ def mzq_normalize(
         help="Output folder for normalized images.")],
 
     min_width: Annotated[int, typer.Option(
-        630, help="Minimum width of input images.")] = 630,
+        help="Minimum width of input images.")] = 630,
 
     min_height: Annotated[int, typer.Option(
-        630, help="Minimum height of input images.")] = 630,
+        help="Minimum height of input images.")] = 630,
 
     target_width: Annotated[int, typer.Option(
-        630, help="Target width of output images.")] = 630,
+        help="Target width of output images.")] = 630,
 
     target_height: Annotated[int, typer.Option(
-        630, help="Target height of output images.")] = 630,
+        help="Target height of output images.")] = 630,
 ):
     """Normalize images in a folder to a specific size and format."""
     from mozyq.norm import normalize
@@ -44,20 +44,21 @@ def mzq_json(
     master: Annotated[Path, typer.Argument(
         ..., help="The seed image to base the Mozyq video on.")],
 
+    output_json: Annotated[Path, typer.Argument(
+        help="Path to output JSON file.")] = Path("mzq.json"),
+
     width: Annotated[int, typer.Option(
-        630, help="Output width.")] = 630,
+        help="Output width.")] = 630,
 
     height: Annotated[int, typer.Option(
-        630, help="Output height.")] = 630,
+        help="Output height.")] = 630,
 
     num_tiles: Annotated[int, typer.Option(
-        21, help="Number of tiles in the grid.")] = 21,
+        help="Number of tiles in the grid.")] = 21,
 
     max_transitions: Annotated[int, typer.Option(
-        10, help="Maximum number of transitions.")] = 10,
+        help="Maximum number of transitions.")] = 10,
 
-    output_json: Annotated[Path, typer.Option(
-        Path("mzq.json"), help="Path to output JSON file.")] = Path("mzq.json"),
 ):
     """Create a Mozyq JSON file from a folder of images and a seed image."""
     from mozyq.mzq import gen_mzq_json
