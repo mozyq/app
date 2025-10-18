@@ -8,6 +8,8 @@ version = "0.0.6"
 description = ""
 authors = ["Gilad Kutiel <gilad.kutiel@gmail.com>"]
 readme = "README.md"
+homepage = "https://mozyq.org"
+repository = "https://github.com/mozyq/app/"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -30,7 +32,3 @@ psutil = "^7.1.0"
 
 [tool.poetry.scripts]
 mzq = "mozyq.app:main"
-
-
-homepage = "https://mozyq.org"
-repository = "https://github.com/mozyq/app/"
