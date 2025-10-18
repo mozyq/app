@@ -1,10 +1,20 @@
+import json
 from functools import cache
 from pathlib import Path
 from typing import Iterable
 
 import cv2
 import numpy as np
+from cattrs import structure
 from PIL import Image
+
+from mozyq.mozyq_types import Mozyq
+
+
+def read_mzqs(mzq_json: Path):
+    with open(mzq_json) as f:
+        mzqs = json.load(f)
+        return [structure(mzq, Mozyq) for mzq in mzqs]
 
 
 @cache

@@ -47,3 +47,16 @@ def center_crop(
 def even(val: int | float):
     val = int(val)
     return val + (val % 2)
+
+
+def tiles2grid(tiles: list[np.ndarray]):
+    d = int(np.sqrt(len(tiles)))
+
+    assert d ** 2 == len(tiles), 'Tiles length must be a perfect square'
+
+    rows = [[tiles[i * d + j]
+             for j in range(d)]
+            for i in range(d)]
+
+    rows = [np.hstack(row) for row in rows]
+    return np.vstack(rows)

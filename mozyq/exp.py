@@ -2,8 +2,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mozyq.io import read_image_lab, write_jpeg
-from mozyq.util import even, scale_down
+from mozyq.io import read_image_lab, read_mzqs, write_jpeg
+from mozyq.util import even, scale_down, tiles2grid
 
 
 def transition(
@@ -64,21 +64,25 @@ def transition(
 
 if __name__ == '__main__':
 
-    dog = read_image_lab(Path('dog.jpg'))
+    mzqs = read_mzqs(Path('output.json'))
+    tiles = mzqs[0].tiles
+    grid = tiles2grid([
+        read_image_lab(Path(tile))
+        for tile in tiles])
 
     frames = Path('tmp')
     frames.mkdir(parents=True, exist_ok=True)
 
-    w = 300
-    h = 300
+    w = 600
+    h = 750
 
     crops = transition(
-        img=dog,
+        img=grid,
         viewport_width=w,
         viewport_height=h,
-        offsetsX=np.array([0, .1, .2, .3]),
-        offsetsY=np.array([0, .1, .2, .3]),
-        scales=np.array([.8, .7, .6, .5]))
+        offsetsX=np.array([0, 0, 0]),
+        offsetsY=np.array([0, 0, 0]),
+        scales=np.array([1, .9, .8]))
 
     for i, crop in enumerate(crops):
         path = frames / f'crop_{i:03d}.jpg'
