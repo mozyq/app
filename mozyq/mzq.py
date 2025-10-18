@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-from attrs import frozen
 from cattr import unstructure
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
@@ -10,12 +9,7 @@ from skimage.util import view_as_blocks
 from tqdm import tqdm
 
 from mozyq.io import load_tiles, read_image_lab, write_jpeg
-
-
-@frozen
-class Mozyq:
-    master: Path
-    tiles: list[Path]
+from mozyq.mozyq_types import Mozyq
 
 
 class MozyqGenerator:
