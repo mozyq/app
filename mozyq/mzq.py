@@ -133,7 +133,7 @@ def gen_mzq_json(
 
     # WRITE JSON
     with output_json.open('w') as f:
-        json.dump(unstructure(mzqs[::-1]), f)
+        json.dump(unstructure(mzqs[:-1][::-1]), f)
 
     print(f'Wrote Mozyq JSON to {output_json}')
 

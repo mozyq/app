@@ -118,7 +118,7 @@ def step(
 
     max_zoom = max(zooms)
     for zoom in zooms:
-        alpha = (1 / zoom) / 2
+        alpha = (1 / zoom) * 0.7
         target = crop_zoom(master, zoom)
         scale = zoom / max_zoom
         grid, crop = smart_scale_down_crop(
