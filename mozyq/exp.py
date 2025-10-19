@@ -1,10 +1,11 @@
 from pathlib import Path
 
+import cv2
 import numpy as np
 from attr import dataclass
 
 from mozyq.io import read_image_lab, read_mzqs, write_jpeg
-from mozyq.util import even, scale_down, scale_up, tiles2grid
+from mozyq.util import even, scale_down, tiles2grid
 
 
 @dataclass
@@ -28,6 +29,12 @@ class Transition:
 
         return self
 
+    def clone(self):
+        return Transition(
+            x=self.x.copy(),
+            y=self.y.copy(),
+            scale=self.scale.copy())
+
 
 @dataclass
 class Viewport:
@@ -37,6 +44,32 @@ class Viewport:
     def __iter__(self):
         yield self.width
         yield self.height
+
+
+def gen_transition(
+        *,
+        n: int = 30,
+        sx: float = 0.0,
+        sy: float = 0.0,
+        end_scale: float):
+
+    assert end_scale < 1.0, 'end_scale must be < 1.0'
+
+    f = np.linspace(0, 1, n)
+    f = 0.5 * (1 - np.cos(np.pi * f))
+
+    x = sx * (1 - f)
+    y = sy * (1 - f)
+    scale = 1 - f * (1 - end_scale)
+
+    eps = 1e-6
+    assert np.all((-.5 <= x) & (x <= .5)), 'x out of bounds'
+    assert np.all((-.5 <= y) & (y <= .5)), 'y out of bounds'
+    assert np.all(
+        (end_scale - eps <= scale)
+        & (scale <= 1)), 'scale out of bounds'
+
+    return Transition(x=x, y=y, scale=scale)
 
 
 def master_transition(
@@ -64,14 +97,18 @@ def master_transition(
     assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
     assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
 
-    print('Zooming:', zoom)
+    print('Zooming:', zoom, 'Scale:', scale)
     print('Cropping at:', i, j, 'size:', crop_width, crop_height)
 
     crop = master[
         i:i + crop_height,
         j:j + crop_width]
 
-    crop = scale_up(crop, zoom)
+    crop = cv2.resize(
+        crop,
+        (w, h),
+        interpolation=cv2.INTER_LANCZOS4)
+
     yield crop
     yield from master_transition(
         master=master,
@@ -104,14 +141,18 @@ def grid_transition(
     assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
     assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
 
-    print('Image size:', w, h)
+    print('Grid size:', w, h)
     print('Cropping at:', i, j, 'size:', crop_width, crop_height)
 
     crop = grid[
         i:i + crop_height,
         j:j + crop_width]
 
-    crop = scale_down(crop, scale)
+    crop = cv2.resize(
+        crop,
+        (width, height),
+        interpolation=cv2.INTER_AREA)
+
     yield crop
 
     if scale < .5:
@@ -124,30 +165,31 @@ def grid_transition(
         t=t.next())
 
 
-def gen_transition(
-        *,
-        n: int = 30,
-        sx: float = 0.0,
-        sy: float = 0.0,
-        end_scale: float):
+def transition(
+        master: np.ndarray,
+        grid: np.ndarray,
+        t: Transition):
 
-    assert end_scale < 1.0, 'end_scale must be < 1.0'
+    h, w, _ = master.shape
+    gh, gw, _ = grid.shape
+    assert gh / h == gw / w, 'Aspect ratio of master and grid must match'
+    max_zoom = gw / w
+    vp = Viewport(
+        width=w,
+        height=h)
 
-    f = np.linspace(0, 1, n)
-    f = 0.5 * (1 - np.cos(np.pi * f))
+    alpha = .5
+    for crop_grid, crop_master in zip(
+            grid_transition(
+                grid=grid,
+                viewport=vp,
+                t=t),
 
-    x = sx * (1 - f)
-    y = sy * (1 - f)
-    scale = 1 - f * (1 - end_scale)
-
-    eps = 1e-6
-    assert np.all((-.5 <= x) & (x <= .5)), 'x out of bounds'
-    assert np.all((-.5 <= y) & (y <= .5)), 'y out of bounds'
-    assert np.all(
-        (end_scale - eps <= scale)
-        & (scale <= 1)), 'scale out of bounds'
-
-    return Transition(x=x, y=y, scale=scale)
+            master_transition(
+                master=master,
+                max_zoom=max_zoom,
+                t=t.clone())):
+        yield alpha * crop_master + (1 - alpha) * crop_grid
 
 
 if __name__ == '__main__':
@@ -164,7 +206,7 @@ if __name__ == '__main__':
     frames = Path('tmp')
     frames.mkdir(parents=True, exist_ok=True)
 
-    v = Viewport(width=600, height=750)
+    # v = Viewport(width=600, height=750)
     t = gen_transition(
         n=60,
         sx=-7 * UNIT,
@@ -176,9 +218,14 @@ if __name__ == '__main__':
     #     viewport=v,
     #     t=t)
 
-    crops = master_transition(
+    # crops = master_transition(
+    #     master=master,
+    #     max_zoom=15,
+    #     t=t)
+
+    crops = transition(
         master=master,
-        max_zoom=NUM_TILES,
+        grid=grid,
         t=t)
 
     for i, crop in enumerate(crops):
