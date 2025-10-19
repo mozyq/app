@@ -178,8 +178,9 @@ def transition(
         width=w,
         height=h)
 
-    alpha = .5
-    for crop_grid, crop_master in zip(
+    blend = np.linspace(0, .4, len(t))
+    for a, crop_grid, crop_master in zip(
+            blend,
             grid_transition(
                 grid=grid,
                 viewport=vp,
@@ -189,7 +190,7 @@ def transition(
                 master=master,
                 max_zoom=max_zoom,
                 t=t.clone())):
-        yield alpha * crop_master + (1 - alpha) * crop_grid
+        yield a * crop_master + (1 - a) * crop_grid
 
 
 if __name__ == '__main__':
