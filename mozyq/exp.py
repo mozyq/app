@@ -1,41 +1,62 @@
 from pathlib import Path
 
 import numpy as np
+from attr import dataclass
 
 from mozyq.io import read_image_lab, read_mzqs, write_jpeg
 from mozyq.util import even, scale_down, tiles2grid
 
 
+@dataclass
+class Transition:
+    x: np.ndarray
+    y: np.ndarray
+    scale: np.ndarray
+
+    def __len__(self):
+        return len(self.x)
+
+    def __iter__(self):
+        yield self.x[0]
+        yield self.y[0]
+        yield self.scale[0]
+
+    def next(self):
+        self.x = self.x[1:]
+        self.y = self.y[1:]
+        self.scale = self.scale[1:]
+
+        return self
+
+
+@dataclass
+class Viewport:
+    width: int
+    height: int
+
+    def __iter__(self):
+        yield self.width
+        yield self.height
+
+
 def transition(
         *,
         img: np.ndarray,
-        viewport_width: int,
-        viewport_height: int,
-        offsetsX: np.ndarray,
-        offsetsY: np.ndarray,
-        scales: np.ndarray):
+        viewport: Viewport,
+        t: Transition
+):
     '''
     Offsets (0,0) mean center of image is align with center of viewport
     '''
 
-    assert len(offsetsX) == len(offsetsY) == len(scales), \
-        'offsetX, offsetY, scales must have the same length'
-
-    assert offsetsX.all() >= -1 and offsetsX.all() <= 1, \
-        'offsetX must be in [-1, 1] range'
-
-    assert offsetsY.all() >= -1 and offsetsY.all() <= 1, \
-        'offsetY must be in [-1, 1] range'
-
-    assert 0 < scales.all() <= 1, 'scales must be in (0, 1) range'
-
-    if len(offsetsX) == 0:
+    if len(t) == 0:
         return
 
-    offX, offY, scale = offsetsX[0], offsetsY[0], scales[0]
+    offX, offY, scale = t
+    width, height = viewport
 
-    crop_width = even(viewport_width / scale)
-    crop_height = even(viewport_height / scale)
+    crop_width = even(width / scale)
+    crop_height = even(height / scale)
 
     h, w, _ = img.shape
 
@@ -51,19 +72,33 @@ def transition(
 
     if scale < .5:
         img = scale_down(img, scale)
-        scales /= scale
+        t.scale /= scale
 
     yield from transition(
         img=img,
-        viewport_width=viewport_width,
-        viewport_height=viewport_height,
-        offsetsX=offsetsX[1:],
-        offsetsY=offsetsY[1:],
-        scales=scales[1:])
+        viewport=viewport,
+        t=t.next())
+
+
+def gen_transition(
+        *,
+        n: int = 90,
+        sx: float = 0.0,
+        sy: float = 0.0,
+        end_scale: float):
+
+    assert end_scale < 1.0, 'end_scale must be < 1.0'
+
+    f = np.linspace(0, 1, n)
+    x = sx * (1 - f)
+    y = sy * (1 - f)
+    scale = 1 - f * (1 - end_scale)
+
+    return Transition(x=x, y=y, scale=scale)
 
 
 if __name__ == '__main__':
-
+    NUM_TILES = 15
     mzqs = read_mzqs(Path('output.json'))
     tiles = mzqs[0].tiles
     grid = tiles2grid([
@@ -73,17 +108,18 @@ if __name__ == '__main__':
     frames = Path('tmp')
     frames.mkdir(parents=True, exist_ok=True)
 
-    w = 600
-    h = 750
+    v = Viewport(width=600, height=750)
+    t = gen_transition(
+        n=90,
+        sx=6 / NUM_TILES,
+        sy=4 / NUM_TILES,
+        end_scale=1 / NUM_TILES)
 
     crops = transition(
         img=grid,
-        viewport_width=w,
-        viewport_height=h,
-        offsetsX=np.array([0, 0, 0]),
-        offsetsY=np.array([0, 0, 0]),
-        scales=np.array([1, .9, .8]))
+        viewport=v,
+        t=t)
 
     for i, crop in enumerate(crops):
-        path = frames / f'crop_{i:03d}.jpg'
+        path = frames / f'{i:03d}.jpg'
         write_jpeg(crop.astype(np.uint8), path)
