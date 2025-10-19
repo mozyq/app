@@ -94,6 +94,9 @@ def mzq_json(
     num_tiles: Annotated[int, typer.Option(
         help="Number of tiles in the grid.")],
 
+    scale_down_factor: Annotated[int, typer.Option(
+        help="Factor to scale down tile images for processing.")] = 1,
+
     max_transitions: Annotated[int, typer.Option(
         help="Maximum number of transitions.")] = 10,
 
@@ -174,7 +177,7 @@ def mzq_json(
             num_tiles=num_tiles,
             max_transitions=max_transitions,
             output_json=output_json,
-        )
+            scale_down_factor=scale_down_factor)
 
         typer.echo(f"✅ Mozyq JSON created successfully: '{output_json}'")
 

@@ -2,6 +2,7 @@ import json
 import random
 from pathlib import Path
 
+import cv2
 import numpy as np
 from cattr import unstructure
 from scipy.optimize import linear_sum_assignment
@@ -11,7 +12,6 @@ from tqdm import tqdm
 
 from mozyq.io import load_tiles, read_image_lab, write_jpeg
 from mozyq.mozyq_types import Mozyq
-from mozyq.util import timer
 
 
 class MozyqGenerator:
@@ -21,33 +21,42 @@ class MozyqGenerator:
             vecs: np.ndarray,
             tile_width: int,
             tile_height: int,
+            scale_down_factor: int,
     ):
 
         assert vecs.ndim == 2, f'vectors must be 2D {vecs.shape}'
 
-        _, s = vecs.shape
+        assert tile_height % scale_down_factor == 0, \
+            'tile_height must be divisible by scale_down_factor'
 
-        vec_size = tile_width * tile_height * 3
-        assert s == vec_size, \
-            f'vectors must be of size {vec_size}'
+        assert tile_width % scale_down_factor == 0, \
+            'tile_width must be divisible by scale_down_factor'
+
+        _, s = vecs.shape
 
         self.paths = np.array(paths)
         self.vecs = vecs
-        self.tile_width = tile_width
-        self.tile_height = tile_height
+        self.tile_width = tile_width // scale_down_factor
+        self.tile_height = tile_height // scale_down_factor
+        self.scale_down_factor = scale_down_factor
+
+        vec_size = self.tile_width * self.tile_height * 3
+        assert s == vec_size, \
+            f'vectors must be of size {vec_size}'
 
     @classmethod
     def from_folder(
             cls, folder: Path, *,
             tile_width: int,
-            tile_height: int,):
+            tile_height: int,
+            scale_down_factor: int):
 
         ps = sorted(list(folder.glob('*.jpg')))
 
         tiles = load_tiles(
             tqdm(ps, desc='reading tiles'),
-            tile_width=tile_width,
-            tile_height=tile_height)
+            tile_width=tile_width // scale_down_factor,
+            tile_height=tile_height // scale_down_factor)
 
         vecs = [
             tile.ravel().astype(np.float32)
@@ -59,15 +68,21 @@ class MozyqGenerator:
             paths=ps,
             vecs=vecs,
             tile_width=tile_width,
-            tile_height=tile_height)
+            tile_height=tile_height,
+            scale_down_factor=scale_down_factor)
 
     def generate(self, master: np.ndarray):
         h, w, c = master.shape
 
+        master = cv2.resize(
+            master,
+            (w // self.scale_down_factor, h // self.scale_down_factor),
+            interpolation=cv2.INTER_AREA)
+
         assert c == 3, 'master image must be LAB'
         assert h % 2 == 0, 'master image height must be even'
         assert w % 2 == 0, 'master image width must be even'
-        assert master.size <= self.vecs.size, 'master image too large'
+        assert master.size <= self.vecs.size, f'master {master.shape} vecs {self.vecs.shape}'
 
         master = master.astype(np.float32)
 
@@ -76,12 +91,7 @@ class MozyqGenerator:
             block_shape=(self.tile_height, self.tile_width, 3)
         ).reshape(-1, self.tile_height * self.tile_width * 3)
 
-        def dist(tile, patch):
-            return np.linalg.norm(tile - patch)
-
-        # Compute distance matrix using scipy
-        with timer('computing distance matrix'):
-            d = cdist(self.vecs, targets, metric=dist)
+        d = cdist(self.vecs, targets, metric='euclidean')
 
         rid, cid = linear_sum_assignment(d)
 
@@ -95,6 +105,7 @@ def gen_mzq_json(
         tile_folder: Path,
         width: int,
         height: int,
+        scale_down_factor: int,
         num_tiles: int,
         output_json: Path,
         max_transitions: int = 50,):
@@ -111,11 +122,13 @@ def gen_mzq_json(
     gen = MozyqGenerator.from_folder(
         tile_folder,
         tile_width=tile_width,
-        tile_height=tile_height)
+        tile_height=tile_height,
+        scale_down_factor=scale_down_factor)
 
     masters = set()
     mzqs: list[Mozyq] = []
     for _ in tqdm(range(max_transitions)):
+        # SHOULD RARELY HAPPEN
         if master in masters:
             print(f'Master {master} already used, stopping generation')
             mzqs.pop()
@@ -125,8 +138,13 @@ def gen_mzq_json(
 
         # GENERATE
         paths = gen.generate(read_image_lab(master))
-        start = random.randint(0, len(paths) - 1)
-        # start = len(paths) // 2
+
+        # CHOOSE STARTING POINT
+        for _ in range(3):
+            start = random.randint(0, len(paths) - 1)
+            if paths[start] not in masters:
+                break
+
         mzqs.append(
             Mozyq(
                 master=master,
@@ -172,4 +190,5 @@ if __name__ == '__main__':
         height=750,
         num_tiles=15,
         max_transitions=5,
-        output_json=Path('./output.json'))
+        output_json=Path('./output.json'),
+        scale_down_factor=10)
