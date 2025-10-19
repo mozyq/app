@@ -50,12 +50,12 @@ pip install mozyq
 
 2. **Normalize your images** (optional but recommended):
    ```bash
-   mzq normalize photos/ normalized/ --target-width 600 --target-height 750
+   mzq normalize photos/ normalized/ --target-width 630 --target-height 630
    ```
 
 3. **Generate mosaic data**:
    ```bash
-   mzq json normalized/0001.jpg --width 600 --height 750 --num-tiles 15
+   mzq json normalized/0001.jpg --width 630 --height 630 --num-tiles 21
    ```
 
 4. **Create video frames**:
