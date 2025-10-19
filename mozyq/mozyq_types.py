@@ -10,6 +10,7 @@ Images = Iterable[Tuple[Any, str]]
 class Mozyq:
     master: Path
     tiles: list[Path]
+    start: int
 
 
 Preset = Literal[

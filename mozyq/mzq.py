@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 
 import numpy as np
@@ -121,10 +122,15 @@ def gen_mzq_json(
 
         # GENERATE
         paths = gen.generate(read_image_lab(master))
-        mzqs.append(Mozyq(master=master, tiles=paths.tolist()))
+        start = random.randint(0, len(paths) - 1)
+        # start = len(paths) // 2
+        mzqs.append(
+            Mozyq(
+                master=master,
+                tiles=paths.tolist(),
+                start=start))
 
-        # Use center tile as next master
-        master = paths[len(paths) // 2]
+        master = paths[start]
 
     # WRITE JSON
     with output_json.open('w') as f:
@@ -162,5 +168,5 @@ if __name__ == '__main__':
         width=600,
         height=750,
         num_tiles=15,
-        output_json=Path('./output.json')
-    )
+        max_transitions=5,
+        output_json=Path('./output.json'))

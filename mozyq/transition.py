@@ -5,6 +5,7 @@ import numpy as np
 from attr import dataclass
 
 from mozyq.io import read_image_lab, read_mzqs, write_jpeg
+from mozyq.mozyq_types import Mozyq
 from mozyq.util import even, scale_down, tiles2grid
 
 
@@ -46,33 +47,7 @@ class Viewport:
         yield self.height
 
 
-def gen_transition(
-        *,
-        n: int = 30,
-        sx: float = 0.0,
-        sy: float = 0.0,
-        end_scale: float):
-
-    assert end_scale < 1.0, 'end_scale must be < 1.0'
-
-    f = np.linspace(0, 1, n)
-    f = 0.5 * (1 - np.cos(np.pi * f))
-
-    x = sx * (1 - f)
-    y = sy * (1 - f)
-    scale = 1 - f * (1 - end_scale)
-
-    eps = 1e-6
-    assert np.all((-.5 <= x) & (x <= .5)), 'x out of bounds'
-    assert np.all((-.5 <= y) & (y <= .5)), 'y out of bounds'
-    assert np.all(
-        (end_scale - eps <= scale)
-        & (scale <= 1)), 'scale out of bounds'
-
-    return Transition(x=x, y=y, scale=scale)
-
-
-def master_transition(
+def _master_transition(
         *,
         master: np.ndarray,
         max_zoom: float,
@@ -110,13 +85,13 @@ def master_transition(
         interpolation=cv2.INTER_LANCZOS4)
 
     yield crop
-    yield from master_transition(
+    yield from _master_transition(
         master=master,
         max_zoom=max_zoom,
         t=t.next())
 
 
-def grid_transition(
+def _grid_transition(
         *,
         grid: np.ndarray,
         viewport: Viewport,
@@ -159,13 +134,39 @@ def grid_transition(
         grid = scale_down(grid, scale)
         t.scale /= scale
 
-    yield from grid_transition(
+    yield from _grid_transition(
         grid=grid,
         viewport=viewport,
         t=t.next())
 
 
-def transition(
+def _gen_transition(
+        *,
+        n: int = 30,
+        sx: float = 0.0,
+        sy: float = 0.0,
+        end_scale: float):
+
+    assert end_scale < 1.0, 'end_scale must be < 1.0'
+
+    f = np.linspace(0, 1, n)
+    f = 0.5 * (1 - np.cos(np.pi * f))
+
+    x = sx * (1 - f)
+    y = sy * (1 - f)
+    scale = 1 - f * (1 - end_scale)
+
+    eps = 1e-6
+    assert np.all((-.5 <= x) & (x <= .5)), 'x out of bounds'
+    assert np.all((-.5 <= y) & (y <= .5)), 'y out of bounds'
+    assert np.all(
+        (end_scale - eps <= scale)
+        & (scale <= 1)), 'scale out of bounds'
+
+    return Transition(x=x, y=y, scale=scale)
+
+
+def _transition(
         master: np.ndarray,
         grid: np.ndarray,
         t: Transition):
@@ -182,12 +183,12 @@ def transition(
     blend = np.linspace(0, b, len(t))
     for a, crop_grid, crop_master in zip(
             blend,
-            grid_transition(
+            _grid_transition(
                 grid=grid,
                 viewport=vp,
                 t=t),
 
-            master_transition(
+            _master_transition(
                 master=master,
                 max_zoom=max_zoom,
                 t=t.clone())):
@@ -200,42 +201,35 @@ def transition(
         yield a * master + (1 - a) * crop_grid
 
 
-if __name__ == '__main__':
-    NUM_TILES = 15
-    UNIT = 1 / NUM_TILES
-    mzqs = read_mzqs(Path('output.json'))
-    tiles = mzqs[0].tiles
-
-    master = read_image_lab(Path(mzqs[0].master))
+def mzq_transition(mzq: Mozyq):
+    master = read_image_lab(Path(mzq.master))
     grid = tiles2grid([
         read_image_lab(Path(tile))
-        for tile in tiles])
+        for tile in mzq.tiles])
 
-    frames = Path('tmp')
-    frames.mkdir(parents=True, exist_ok=True)
-
-    # v = Viewport(width=600, height=750)
-    t = gen_transition(
+    dim = int(np.sqrt(len(mzq.tiles)))
+    s = mzq.start
+    row, col = divmod(s, dim)
+    t = _gen_transition(
         n=60,
-        sx=-7 * UNIT,
-        sy=-7 * UNIT,
-        end_scale=UNIT)
+        sx=(col - dim // 2) / dim,
+        sy=(row - dim // 2) / dim,
+        end_scale=1 / dim)
 
-    # crops = grid_transition(
-    #     grid=grid,
-    #     viewport=v,
-    #     t=t)
-
-    # crops = master_transition(
-    #     master=master,
-    #     max_zoom=15,
-    #     t=t)
-
-    crops = transition(
+    yield from _transition(
         master=master,
         grid=grid,
         t=t)
 
+
+if __name__ == '__main__':
+    mzqs = read_mzqs(Path('output.json'))
+
+    out = Path('tmp')
+    out.mkdir(parents=True, exist_ok=True)
+
+    crops = mzq_transition(mzqs[0])
+
     for i, crop in enumerate(crops):
-        path = frames / f'{i:03d}.jpg'
+        path = out / f'{i:03d}.jpg'
         write_jpeg(crop.astype(np.uint8), path)
