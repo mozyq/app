@@ -123,7 +123,7 @@ mzq json MASTER_IMAGE [OUTPUT_JSON] [OPTIONS]
 
 **Example:**
 ```bash
-mzq json normalized/0042.jpg result.json --width 600 --height 750 --num-tiles 15
+mzq json normalized/0042.jpg result.json --width 630 --height 630 --num-tiles 21
 ```
 
 **Important Notes:**
