@@ -52,7 +52,7 @@ def transition(
     if len(t) == 0:
         return
 
-    offX, offY, scale = t
+    x, y, scale = t
     width, height = viewport
 
     crop_width = even(width / scale)
@@ -60,13 +60,19 @@ def transition(
 
     h, w, _ = img.shape
 
-    i = int((w * (1 - offX) - crop_width) // 2)
-    j = int((h * (1 - offY) - crop_height) // 2)
+    i = round(y * h)
+    j = round(x * w)
+
+    assert 0 <= i <= (h - crop_height), f'Bad crop {i} {x} {y} {scale}'
+    assert 0 <= j <= (w - crop_width), f'Bad crop {j} {x} {y} {scale}'
 
     print('Image size:', w, h)
-    print('Cropping at:', i, j, 'size:', crop_width, crop_height)
+    print('Cropping at:', x, y, 'size:', crop_width, crop_height)
 
-    crop = img[j:j + crop_height, i:i + crop_width]
+    crop = img[
+        i:i + crop_height,
+        j:j + crop_width]
+
     crop = scale_down(crop, scale)
     yield crop
 
@@ -82,7 +88,7 @@ def transition(
 
 def gen_transition(
         *,
-        n: int = 90,
+        n: int = 30,
         sx: float = 0.0,
         sy: float = 0.0,
         end_scale: float):
@@ -94,11 +100,19 @@ def gen_transition(
     y = sy * (1 - f)
     scale = 1 - f * (1 - end_scale)
 
+    eps = 1e-6
+    assert np.all((0 <= x) & (x <= 1)), 'x out of bounds'
+    assert np.all((0 <= y) & (y <= 1)), 'y out of bounds'
+    assert np.all(
+        (end_scale - eps <= scale)
+        & (scale <= 1)), 'scale out of bounds'
+
     return Transition(x=x, y=y, scale=scale)
 
 
 if __name__ == '__main__':
     NUM_TILES = 15
+    UNIT = 1 / NUM_TILES
     mzqs = read_mzqs(Path('output.json'))
     tiles = mzqs[0].tiles
     grid = tiles2grid([
@@ -111,9 +125,9 @@ if __name__ == '__main__':
     v = Viewport(width=600, height=750)
     t = gen_transition(
         n=90,
-        sx=6 / NUM_TILES,
-        sy=4 / NUM_TILES,
-        end_scale=1 / NUM_TILES)
+        sx=7 * UNIT,
+        sy=7 * UNIT,
+        end_scale=UNIT)
 
     crops = transition(
         img=grid,
