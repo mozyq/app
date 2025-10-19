@@ -94,7 +94,7 @@ mzq normalize INPUT_FOLDER OUTPUT_FOLDER [OPTIONS]
 
 **Example:**
 ```bash
-mzq normalize photos/ normalized/ --target-width 600 --target-height 750
+mzq normalize photos/ normalized/ --target-width 630 --target-height 630
 ```
 
 This command:
