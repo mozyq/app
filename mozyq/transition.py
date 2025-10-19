@@ -72,9 +72,6 @@ def _master_transition(
     assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
     assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
 
-    print('Zooming:', zoom, 'Scale:', scale)
-    print('Cropping at:', i, j, 'size:', crop_width, crop_height)
-
     crop = master[
         i:i + crop_height,
         j:j + crop_width]
@@ -115,9 +112,6 @@ def _grid_transition(
     maxj = w - crop_width
     assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
     assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
-
-    print('Grid size:', w, h)
-    print('Cropping at:', i, j, 'size:', crop_width, crop_height)
 
     crop = grid[
         i:i + crop_height,
