@@ -198,6 +198,9 @@ def mzq_frames(
     out_folder: Annotated[Path, typer.Argument(
         help="Output folder for the frames.")],
 
+    fpt: Annotated[int, typer.Option(
+        help="Frames per transition.")] = 60,
+
 ):
     """Generate frames from a Mozyq JSON file."""
     try:
@@ -222,7 +225,10 @@ def mzq_frames(
         typer.echo(f"📊 Loaded {len(mzqs)} Mozyq sequences")
 
         # Generate frames
-        frames(mzqs, out_folder)
+        frames(
+            mzqs=mzqs,
+            out_folder=out_folder,
+            fpt=fpt)
 
         typer.echo("✅ Frame generation completed successfully!")
 

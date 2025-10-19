@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from attr import dataclass
 
-from mozyq.io import read_image_lab, read_mzqs, write_jpeg
+from mozyq.io import read_image_lab
 from mozyq.mozyq_types import Mozyq
 from mozyq.util import even, scale_down, tiles2grid
 
@@ -136,14 +136,14 @@ def _grid_transition(
 
 def _gen_transition(
         *,
-        n: int = 30,
+        fpt: int,
         sx: float = 0.0,
         sy: float = 0.0,
         end_scale: float):
 
     assert end_scale < 1.0, 'end_scale must be < 1.0'
 
-    f = np.linspace(0, 1, n)
+    f = np.linspace(0, 1, fpt)
     f = 0.5 * (1 - np.cos(np.pi * f))
 
     x = sx * (1 - f)
@@ -194,7 +194,7 @@ def _transition(
         yield a * master + (1 - a) * crop_grid
 
 
-def mzq_transition(mzq: Mozyq):
+def mzq_transition(mzq: Mozyq, fpt: int):
     master = read_image_lab(Path(mzq.master))
     grid = tiles2grid([
         read_image_lab(Path(tile))
@@ -204,7 +204,7 @@ def mzq_transition(mzq: Mozyq):
     s = mzq.start
     row, col = divmod(s, dim)
     t = _gen_transition(
-        n=60,
+        fpt=fpt,
         sx=(col - dim // 2) / dim,
         sy=(row - dim // 2) / dim,
         end_scale=1 / dim)
@@ -213,16 +213,3 @@ def mzq_transition(mzq: Mozyq):
         master=master,
         grid=grid,
         t=t)
-
-
-if __name__ == '__main__':
-    mzqs = read_mzqs(Path('output.json'))
-
-    out = Path('tmp')
-    out.mkdir(parents=True, exist_ok=True)
-
-    crops = mzq_transition(mzqs[0])
-
-    for i, crop in enumerate(crops):
-        path = out / f'{i:03d}.jpg'
-        write_jpeg(crop.astype(np.uint8), path)
