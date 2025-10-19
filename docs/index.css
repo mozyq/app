@@ -1,0 +1,134 @@
+/* vietnamese */
+@font-face {
+    font-family: 'Lexend';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url(Lexend-VariableFont_wght.ttf);
+}
+
+.badge {
+    position: fixed;
+    top: 0;
+    right: -3em;
+    height: 4em;
+    width: 10em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: aliceblue;
+    transform: rotate(45deg);
+    transform-origin: center;
+}
+
+.badge img {
+    height: 3em;
+}
+
+#logo {
+    height: 5em;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+body {
+    overflow-y: scroll;
+    overflow-x: hidden;
+    background: linear-gradient(30deg, #404040 0%, #252525 100%);
+    font-family: "Roboto Mono", monospace;
+    font-optical-sizing: auto;
+    color: #dedede;
+    width: 100vw;
+
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.head {
+    margin-top: 5em;
+}
+
+h1 {
+    font-family: 'Lexend', sans-serif;
+    font-size: 2em;
+    font-weight: 900;
+    color: #ccc;
+}
+
+h2 {
+    font-size: 1.4em;
+    font-weight: 200;
+    color: #ccc;
+}
+
+.shadow {
+    box-shadow: 10px 10px 5px 0px rgba(0, 0, 0, 0.75);
+}
+
+#vid-cont {
+    margin: 5em 0;
+}
+
+
+video {
+    height: 630px;
+    width: 630px;
+    margin-bottom: -4px;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.row.center {
+    align-items: center;
+}
+
+.code {
+    background-color: #303030;
+    padding: 1em;
+    margin: 10em 0;
+}
+
+code {
+    font-size: 1.1em;
+    display: block;
+}
+
+code.comment {
+    color: #888;
+    margin-top: 1em;
+}
+
+@media (max-width: 650px) {
+    .shadow {
+        box-shadow: none;
+    }
+
+    .head,
+    .code {
+        display: none;
+    }
+
+    body {
+        background: #252525;
+        overflow-y: hidden;
+        overflow-x: hidden;
+    }
+
+    #vid-cont,
+    video {
+        width: 100vw;
+    }
+}
