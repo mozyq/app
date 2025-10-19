@@ -60,11 +60,13 @@ def transition(
 
     h, w, _ = img.shape
 
-    i = round(y * h)
-    j = round(x * w)
+    i = round(((1 + 2*y) * h - crop_height) / 2)
+    j = round(((1 + 2*x) * w - crop_width) / 2)
 
-    assert 0 <= i <= (h - crop_height), f'Bad crop {i} {x} {y} {scale}'
-    assert 0 <= j <= (w - crop_width), f'Bad crop {j} {x} {y} {scale}'
+    maxi = h - crop_height
+    maxj = w - crop_width
+    assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
+    assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
 
     print('Image size:', w, h)
     print('Cropping at:', x, y, 'size:', crop_width, crop_height)
@@ -96,13 +98,15 @@ def gen_transition(
     assert end_scale < 1.0, 'end_scale must be < 1.0'
 
     f = np.linspace(0, 1, n)
+    f = 0.5 * (1 - np.cos(np.pi * f))
+
     x = sx * (1 - f)
     y = sy * (1 - f)
     scale = 1 - f * (1 - end_scale)
 
     eps = 1e-6
-    assert np.all((0 <= x) & (x <= 1)), 'x out of bounds'
-    assert np.all((0 <= y) & (y <= 1)), 'y out of bounds'
+    assert np.all((-.5 <= x) & (x <= .5)), 'x out of bounds'
+    assert np.all((-.5 <= y) & (y <= .5)), 'y out of bounds'
     assert np.all(
         (end_scale - eps <= scale)
         & (scale <= 1)), 'scale out of bounds'
@@ -124,9 +128,9 @@ if __name__ == '__main__':
 
     v = Viewport(width=600, height=750)
     t = gen_transition(
-        n=90,
-        sx=7 * UNIT,
-        sy=7 * UNIT,
+        n=60,
+        sx=2 * UNIT,
+        sy=0,
         end_scale=UNIT)
 
     crops = transition(

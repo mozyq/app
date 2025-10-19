@@ -45,8 +45,8 @@ def center_crop(
 
 
 def even(val: int | float):
-    val = int(val)
-    return val + (val % 2)
+    val = round(val)
+    return val - (val % 2)
 
 
 def tiles2grid(tiles: list[np.ndarray]):
