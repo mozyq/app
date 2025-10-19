@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from mozyq.io import load_tiles, read_image_lab, write_jpeg
 from mozyq.mozyq_types import Mozyq
+from mozyq.util import timer
 
 
 class MozyqGenerator:
@@ -79,7 +80,9 @@ class MozyqGenerator:
             return np.linalg.norm(tile - patch)
 
         # Compute distance matrix using scipy
-        d = cdist(self.vecs, targets, metric=dist)
+        with timer('computing distance matrix'):
+            d = cdist(self.vecs, targets, metric=dist)
+
         rid, cid = linear_sum_assignment(d)
 
         # Sort indices

@@ -85,20 +85,20 @@ def mzq_json(
     master: Annotated[Path, typer.Argument(
         ..., help="The seed image to base the Mozyq video on.")],
 
-    output_json: Annotated[Path, typer.Argument(
-        help="Path to output JSON file.")] = Path("mzq.json"),
-
     width: Annotated[int, typer.Option(
-        help="Output width.")] = 630,
+        help="Output width.")],
 
     height: Annotated[int, typer.Option(
-        help="Output height.")] = 630,
+        help="Output height.")],
 
     num_tiles: Annotated[int, typer.Option(
-        help="Number of tiles in the grid.")] = 21,
+        help="Number of tiles in the grid.")],
 
     max_transitions: Annotated[int, typer.Option(
         help="Maximum number of transitions.")] = 10,
+
+    output_json: Annotated[Path, typer.Argument(
+        help="Path to output JSON file.")] = Path("mzq.json"),
 
 ):
     """Create a Mozyq JSON file from a folder of images and a seed image."""
