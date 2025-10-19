@@ -129,8 +129,8 @@ if __name__ == '__main__':
     v = Viewport(width=600, height=750)
     t = gen_transition(
         n=60,
-        sx=7 * UNIT,
-        sy=7 * UNIT,
+        sx=-7 * UNIT,
+        sy=-7 * UNIT,
         end_scale=UNIT)
 
     crops = transition(
