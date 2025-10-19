@@ -178,7 +178,8 @@ def transition(
         width=w,
         height=h)
 
-    blend = np.linspace(0, .4, len(t))
+    b = 0.3
+    blend = np.linspace(0, b, len(t))
     for a, crop_grid, crop_master in zip(
             blend,
             grid_transition(
@@ -190,7 +191,13 @@ def transition(
                 master=master,
                 max_zoom=max_zoom,
                 t=t.clone())):
+
         yield a * crop_master + (1 - a) * crop_grid
+
+    fade = b + (1 - b) * np.linspace(0, 1, 30) ** 2
+    print('Fading out with blend factors:', fade)
+    for a in fade:
+        yield a * master + (1 - a) * crop_grid
 
 
 if __name__ == '__main__':
