@@ -132,8 +132,9 @@ def mzq_json(
             raise typer.Exit(1)
 
         # Check if tile folder has enough images
-        tile_files = [f for f in tile_folder.iterdir()
-                      if f.is_file() and f.suffix.lower() in image_extensions]
+        tile_files = [
+            f for f in tile_folder.iterdir()
+            if f.is_file() and f.suffix.lower() in image_extensions]
 
         required_tiles = num_tiles * num_tiles
         if len(tile_files) < required_tiles:
@@ -161,11 +162,12 @@ def mzq_json(
             raise typer.Exit(1)
 
         typer.echo(f"🖼️  Master image: '{master}'")
-        typer.echo(
-            f"📁 Tile folder: '{tile_folder}' ({len(tile_files)} images)")
+        typer.echo(f"📁 Tile folder: '{tile_folder}'")
+        typer.echo(f'🖼️  ({len(tile_files)} images found)')
         typer.echo(f"📐 Grid: {num_tiles}x{num_tiles} = {required_tiles} tiles")
         typer.echo(f"📏 Dimensions: {width}x{height}")
         typer.echo(f"🔄 Max transitions: {max_transitions}")
+        typer.echo(f"📄 Output JSON: '{output_json}'")
 
         from mozyq.mzq import gen_mzq_json
 
@@ -214,14 +216,14 @@ def mzq_frames(
             typer.echo(f"❌ Error: '{mzq_json}' is not a file.", err=True)
             raise typer.Exit(1)
 
-        typer.echo(f"📋 Loading Mozyq data from: '{mzq_json}'")
-        typer.echo(f"📤 Output frames to: '{out_folder}'")
-
         from mozyq.frame import frames
 
         # Load and validate JSON
         mzqs = read_mzqs(mzq_json)
 
+        typer.echo(f"📋 Loading Mozyq data from: '{mzq_json}'")
+        typer.echo(f"📤 Output frames to: '{out_folder}'")
+        typer.echo(f"🎞️  Frames per transition: {fpt}")
         typer.echo(f"📊 Loaded {len(mzqs)} Mozyq sequences")
 
         # Generate frames
