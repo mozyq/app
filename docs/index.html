@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="index.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta property="og:title" content="mozyq.org" />
+    <meta property="og:image" content="https://mozyq.org/og.jpg" />
+    <meta property="og:description" content="Best mosaic generator I've written so far." />
+
+    <meta name="description" content="mozyq.org - Best mosaic generator I've written so far." />
+
+    <title>mozyq.org</title>
+</head>
+
+<body>
+    <main>
+        <!-- MENU -->
+        <div class="badge">
+            <a href="https://github.com/mozyq/app/" target="_blank">
+                <img src="github.svg" alt="" srcset="">
+            </a>
+        </div>
+
+        <!-- HEAD -->
+        <div class="head row center">
+            <img id="logo" src="mosaic.svg" alt="">
+            <div class="col">
+                <h1>mozyq.org</h1>
+                <h2>The best mosaic generator I made last night.</h2>
+            </div>
+        </div>
+
+        <!-- VIDEO -->
+        <div id="vid-cont" class="shadow">
+            <video id='video' autoplay loop muted>
+                <source src="https://mozyq.org/video.mp4" type="video/mp4" />
+            </video>
+        </div>
+
+        <!-- CODE -->
+        <div class="code shadow">
+            <code class="comment"># Install mozyq</code>
+            <code>pip install mozyq</code>
+            <code class="comment"># Grab some photos</code>
+            <code>mkdir photos && seq 999 | xargs -I {} -n 1 -P 32 wget https://picsum.photos/630 -O photos/{}.jpg</code>
+            <code class="comment"># Generate frames for video</code>
+            <code>mzq json photos/1.jpg && mzq frames mzq.json frames</code>
+            <code class="comment"># Install ffmpeg</code>
+            <code>sudo apt install ffmpeg</code>
+            <code class="comment"># Generate video from frames</code>
+            <code>ffmpeg -y -framerate 16 -i frames/%04d.jpg -c:v libx264 -pix_fmt yuv420p output.mp4</code>
+        </div>
+    </main>
+</body>
+
+</html>
