@@ -4,6 +4,8 @@ from typing import Annotated
 
 import typer
 
+from mozyq.io import read_mzqs
+
 app = typer.Typer()
 
 
@@ -209,61 +211,10 @@ def mzq_frames(
         typer.echo(f"📋 Loading Mozyq data from: '{mzq_json}'")
         typer.echo(f"📤 Output frames to: '{out_folder}'")
 
-        import json
-
         from mozyq.frame import frames
-        from mozyq.mozyq_types import Mozyq
 
         # Load and validate JSON
-        try:
-            with open(mzq_json) as f:
-                json_data = json.load(f)
-        except json.JSONDecodeError as e:
-            typer.echo(f"❌ Error: Invalid JSON file: {e}", err=True)
-            raise typer.Exit(1)
-
-        if not isinstance(json_data, list):
-            typer.echo(
-                "❌ Error: JSON file must contain a list of Mozyq objects.", err=True)
-            raise typer.Exit(1)
-
-        if not json_data:
-            typer.echo("❌ Error: JSON file is empty.", err=True)
-            raise typer.Exit(1)
-
-        # Convert to Mozyq objects with proper error handling
-        mzqs = []
-        for i, mzq_dict in enumerate(json_data):
-            try:
-                if not isinstance(mzq_dict, dict):
-                    raise ValueError(f"Item {i} is not a valid object")
-
-                if 'master' not in mzq_dict or 'tiles' not in mzq_dict:
-                    raise ValueError(
-                        f"Item {i} missing 'master' or 'tiles' field")
-
-                # Convert string paths to Path objects
-                mzq = Mozyq(
-                    master=Path(mzq_dict['master']),
-                    tiles=[Path(tile) for tile in mzq_dict['tiles']]
-                )
-
-                # Validate that files exist
-                if not mzq.master.exists():
-                    typer.echo(
-                        f"⚠️  Warning: Master image '{mzq.master}' not found (item {i})")
-
-                missing_tiles = [
-                    tile for tile in mzq.tiles if not tile.exists()]
-                if missing_tiles:
-                    typer.echo(
-                        f"⚠️  Warning: {len(missing_tiles)} tile(s) not found in item {i}")
-
-                mzqs.append(mzq)
-
-            except Exception as e:
-                typer.echo(f"❌ Error processing item {i}: {e}", err=True)
-                raise typer.Exit(1)
+        mzqs = read_mzqs(mzq_json)
 
         typer.echo(f"📊 Loaded {len(mzqs)} Mozyq sequences")
 

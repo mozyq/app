@@ -85,7 +85,8 @@ def even(val: int | float):
 def tiles2grid(tiles: list[np.ndarray]):
     d = int(np.sqrt(len(tiles)))
 
-    assert d ** 2 == len(tiles), 'Tiles length must be a perfect square'
+    assert d ** 2 == len(
+        tiles), f'Tiles length must be a perfect square {len(tiles)}'
 
     rows = [[tiles[i * d + j]
              for j in range(d)]
