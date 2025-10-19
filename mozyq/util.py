@@ -1,8 +1,14 @@
 from contextlib import contextmanager
+from enum import IntEnum
 from time import perf_counter
 
 import cv2
 import numpy as np
+
+
+class Interpolation(IntEnum):
+    AREA = cv2.INTER_AREA
+    LANCZOS4 = cv2.INTER_LANCZOS4
 
 
 @contextmanager
@@ -13,17 +19,44 @@ def timer(label=""):
     print(f"{label} took {(end - start)*1000:.2f} ms")
 
 
-def scale_down(img: np.ndarray, scale: float):
+def _scale(
+        *,
+        img: np.ndarray,
+        scale: float,
+        inter: Interpolation):
+
     if scale == 1:
         return img
-
-    assert 0 < scale < 1, "Scale must be in (0, 1) range"
 
     h, w, _ = img.shape
     nw = even(w * scale)
     nh = even(h * scale)
 
-    return cv2.resize(img, (nw, nh), interpolation=cv2.INTER_AREA)
+    return cv2.resize(img, (nw, nh), interpolation=inter)
+
+
+def scale_down(
+        img: np.ndarray,
+        scale: float):
+
+    assert 0 < scale <= 1, "Scale must be < 1"
+
+    return _scale(
+        img=img,
+        scale=scale,
+        inter=Interpolation.AREA)
+
+
+def scale_up(
+        img: np.ndarray,
+        scale: float):
+
+    assert scale >= 1, "Scale must be >= 1"
+
+    return _scale(
+        img=img,
+        scale=scale,
+        inter=Interpolation.LANCZOS4)
 
 
 def center_crop(

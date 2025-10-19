@@ -29,20 +29,6 @@ def read_image_lab(path: Path) -> np.ndarray:
     return img
 
 
-def scale_down(
-        img: np.ndarray, *,
-        width: int,
-        height: int) -> np.ndarray:
-    """Resize numpy array image to specified size [height, width]"""
-    assert img.ndim == 3 and img.shape[-1] == 3, 'Expecting HWC image'
-
-    # Resize using OpenCV
-    return cv2.resize(
-        img,
-        (width, height),
-        interpolation=cv2.INTER_AREA)
-
-
 def load_tiles(
         paths: Iterable[Path], *,
         tile_width: int,
@@ -53,7 +39,10 @@ def load_tiles(
 
     for path in paths:
         tile = read_image_lab(path)
-        yield scale_down(tile, width=tile_width, height=tile_height)
+        yield cv2.resize(
+            tile,
+            (tile_width, tile_height),
+            interpolation=cv2.INTER_AREA)
 
 
 def write_jpeg(img: np.ndarray, path: str | Path, quality: int = 90):

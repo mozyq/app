@@ -4,7 +4,7 @@ import numpy as np
 from attr import dataclass
 
 from mozyq.io import read_image_lab, read_mzqs, write_jpeg
-from mozyq.util import even, scale_down, tiles2grid
+from mozyq.util import even, scale_down, scale_up, tiles2grid
 
 
 @dataclass
@@ -39,16 +39,52 @@ class Viewport:
         yield self.height
 
 
-def transition(
+def master_transition(
         *,
-        img: np.ndarray,
+        master: np.ndarray,
+        max_zoom: float,
+        t: Transition):
+
+    if len(t) == 0:
+        return
+
+    x, y, scale = t
+
+    h, w, _ = master.shape
+
+    zoom = max(1, max_zoom * scale)
+    crop_width = even(w / zoom)
+    crop_height = even(h / zoom)
+
+    i = round(((1 + 2*y) * h - crop_height) / 2)
+    j = round(((1 + 2*x) * w - crop_width) / 2)
+
+    maxi = h - crop_height
+    maxj = w - crop_width
+    assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
+    assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
+
+    print('Zooming:', zoom)
+    print('Cropping at:', i, j, 'size:', crop_width, crop_height)
+
+    crop = master[
+        i:i + crop_height,
+        j:j + crop_width]
+
+    crop = scale_up(crop, zoom)
+    yield crop
+    yield from master_transition(
+        master=master,
+        max_zoom=max_zoom,
+        t=t.next())
+
+
+def grid_transition(
+        *,
+        grid: np.ndarray,
         viewport: Viewport,
         t: Transition
 ):
-    '''
-    Offsets (0,0) mean center of image is align with center of viewport
-    '''
-
     if len(t) == 0:
         return
 
@@ -58,7 +94,7 @@ def transition(
     crop_width = even(width / scale)
     crop_height = even(height / scale)
 
-    h, w, _ = img.shape
+    h, w, _ = grid.shape
 
     i = round(((1 + 2*y) * h - crop_height) / 2)
     j = round(((1 + 2*x) * w - crop_width) / 2)
@@ -69,9 +105,9 @@ def transition(
     assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
 
     print('Image size:', w, h)
-    print('Cropping at:', x, y, 'size:', crop_width, crop_height)
+    print('Cropping at:', i, j, 'size:', crop_width, crop_height)
 
-    crop = img[
+    crop = grid[
         i:i + crop_height,
         j:j + crop_width]
 
@@ -79,11 +115,11 @@ def transition(
     yield crop
 
     if scale < .5:
-        img = scale_down(img, scale)
+        grid = scale_down(grid, scale)
         t.scale /= scale
 
-    yield from transition(
-        img=img,
+    yield from grid_transition(
+        grid=grid,
         viewport=viewport,
         t=t.next())
 
@@ -119,6 +155,8 @@ if __name__ == '__main__':
     UNIT = 1 / NUM_TILES
     mzqs = read_mzqs(Path('output.json'))
     tiles = mzqs[0].tiles
+
+    master = read_image_lab(Path(mzqs[0].master))
     grid = tiles2grid([
         read_image_lab(Path(tile))
         for tile in tiles])
@@ -133,9 +171,14 @@ if __name__ == '__main__':
         sy=-7 * UNIT,
         end_scale=UNIT)
 
-    crops = transition(
-        img=grid,
-        viewport=v,
+    # crops = grid_transition(
+    #     grid=grid,
+    #     viewport=v,
+    #     t=t)
+
+    crops = master_transition(
+        master=master,
+        max_zoom=NUM_TILES,
         t=t)
 
     for i, crop in enumerate(crops):
