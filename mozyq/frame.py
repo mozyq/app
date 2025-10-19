@@ -1,12 +1,10 @@
 # https://names2023war.ynet.co.il/api/people/paginate?limit=2000&offset=0&search=
-import json
 from pathlib import Path
 
 import numpy as np
-from cattrs import structure
 from tqdm import tqdm
 
-from mozyq.io import write_jpeg
+from mozyq.io import read_mzqs, write_jpeg
 from mozyq.mzq import Mozyq
 from mozyq.transition import mzq_transition
 
@@ -27,9 +25,5 @@ def frames(mzqs: list[Mozyq], out_folder: Path):
 
 
 if __name__ == '__main__':
-    with open('mzq.json') as f:
-        mzqs = [
-            structure(mzq, Mozyq)
-            for mzq in json.load(f)]
-
-    frames(mzqs, Path('./frames'))
+    mzqs = read_mzqs(Path('output.json'))
+    frames(mzqs, Path('./tmp'))

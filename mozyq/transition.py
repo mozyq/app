@@ -190,7 +190,6 @@ def _transition(
         yield a * crop_master + (1 - a) * crop_grid
 
     fade = b + (1 - b) * np.linspace(0, 1, 30) ** 2
-    print('Fading out with blend factors:', fade)
     for a in fade:
         yield a * master + (1 - a) * crop_grid
 
