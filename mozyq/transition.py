@@ -205,8 +205,8 @@ def mzq_transition(mzq: Mozyq, fpt: int):
     row, col = divmod(s, dim)
     t = _gen_transition(
         fpt=fpt,
-        sx=(col - dim // 2) / dim,
-        sy=(row - dim // 2) / dim,
+        sx=(col - (dim - 1) / 2) / dim,
+        sy=(row - (dim - 1) / 2) / dim,
         end_scale=1 / dim)
 
     yield from _transition(
