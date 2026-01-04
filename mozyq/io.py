@@ -1,12 +1,12 @@
 import json
 from functools import cache
 from pathlib import Path
-from typing import Iterable
 
 import cv2
 import numpy as np
 from cattrs import structure
 from PIL import Image
+from tqdm import tqdm
 
 from mozyq.mozyq_types import Mozyq
 
@@ -29,19 +29,12 @@ def read_image_lab(path: Path) -> np.ndarray:
     return img
 
 
-def load_tiles(
-        paths: Iterable[Path], *,
-        tile_width: int,
-        tile_height: int):
-
-    dbg = Path('dbg')
-    dbg.mkdir(parents=True, exist_ok=True)
-
-    for path in paths:
+def load_tiles(paths: list[Path], *, tw, th):
+    for path in tqdm(paths, desc='Reading tiles'):
         tile = read_image_lab(path)
         yield cv2.resize(
             tile,
-            (tile_width, tile_height),
+            (tw, th),
             interpolation=cv2.INTER_AREA)
 
 

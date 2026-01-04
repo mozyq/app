@@ -85,17 +85,8 @@ def mzq_json(
     master: Annotated[Path, typer.Argument(
         ..., help="The seed image to base the Mozyq video on.")],
 
-    width: Annotated[int, typer.Option(
-        help="Output width.")],
-
-    height: Annotated[int, typer.Option(
-        help="Output height.")],
-
-    num_tiles: Annotated[int, typer.Option(
-        help="Number of tiles in the grid.")],
-
-    scale_down_factor: Annotated[int, typer.Option(
-        help="Factor to scale down tile images for processing.")] = 1,
+    grid_size: Annotated[int, typer.Option(
+        help="Grid size (num_tiles x num_tiles)")] = 9,
 
     max_transitions: Annotated[int, typer.Option(
         help="Maximum number of transitions.")] = 10,
@@ -136,36 +127,24 @@ def mzq_json(
             f for f in tile_folder.iterdir()
             if f.is_file() and f.suffix.lower() in image_extensions]
 
-        required_tiles = num_tiles * num_tiles
+        required_tiles = grid_size * grid_size
         if len(tile_files) < required_tiles:
             typer.echo(
-                f"❌ Error: Need at least {required_tiles} images for {num_tiles}x{num_tiles} grid.", err=True)
+                f"❌ Error: Need at least {required_tiles} images for {grid_size}x{grid_size} grid.", err=True)
             typer.echo(
                 f"   Found only {len(tile_files)} images in '{tile_folder}'", err=True)
             raise typer.Exit(1)
 
         # Validate num_tiles is odd
-        if num_tiles % 2 == 0:
+        if grid_size % 2 == 0:
             typer.echo(
-                f"❌ Error: num_tiles must be odd, got {num_tiles}", err=True)
-            raise typer.Exit(1)
-
-        # Validate dimensions are divisible by num_tiles
-        if width % num_tiles != 0:
-            typer.echo(
-                f"❌ Error: width ({width}) must be divisible by num_tiles ({num_tiles})", err=True)
-            raise typer.Exit(1)
-
-        if height % num_tiles != 0:
-            typer.echo(
-                f"❌ Error: height ({height}) must be divisible by num_tiles ({num_tiles})", err=True)
+                f"❌ Error: num_tiles must be odd, got {grid_size}", err=True)
             raise typer.Exit(1)
 
         typer.echo(f"🖼️  Master image: '{master}'")
         typer.echo(f"📁 Tile folder: '{tile_folder}'")
         typer.echo(f'🖼️  ({len(tile_files)} images found)')
-        typer.echo(f"📐 Grid: {num_tiles}x{num_tiles} = {required_tiles} tiles")
-        typer.echo(f"📏 Dimensions: {width}x{height}")
+        typer.echo(f"📐 Grid: {grid_size}x{grid_size} = {required_tiles} tiles")
         typer.echo(f"🔄 Max transitions: {max_transitions}")
         typer.echo(f"📄 Output JSON: '{output_json}'")
 
@@ -174,12 +153,10 @@ def mzq_json(
         gen_mzq_json(
             master=master,
             tile_folder=tile_folder,
-            width=width,
-            height=height,
-            num_tiles=num_tiles,
+            grid_size=grid_size,
             max_transitions=max_transitions,
             output_json=output_json,
-            scale_down_factor=scale_down_factor)
+        )
 
         typer.echo(f"✅ Mozyq JSON created successfully: '{output_json}'")
 

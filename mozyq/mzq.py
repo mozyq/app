@@ -10,53 +10,45 @@ from scipy.spatial.distance import cdist
 from skimage.util import view_as_blocks
 from tqdm import tqdm
 
-from mozyq.io import load_tiles, read_image_lab, write_jpeg
+from mozyq.cnst import SIZE_FOR_MATCHING
+from mozyq.io import load_tiles, read_image_lab
 from mozyq.mozyq_types import Mozyq
 
 
 class MozyqGenerator:
     def __init__(
             self, *,
+            th: int,
+            tw: int,
+            grid_size: int,
             paths: list[Path],
             vecs: np.ndarray,
-            tile_width: int,
-            tile_height: int,
-            scale_down_factor: int,
     ):
 
         assert vecs.ndim == 2, f'vectors must be 2D {vecs.shape}'
 
-        assert tile_height % scale_down_factor == 0, \
-            'tile_height must be divisible by scale_down_factor'
-
-        assert tile_width % scale_down_factor == 0, \
-            'tile_width must be divisible by scale_down_factor'
-
-        _, s = vecs.shape
+        print(f'{vecs.shape=}')
 
         self.paths = np.array(paths)
         self.vecs = vecs
-        self.tile_width = tile_width // scale_down_factor
-        self.tile_height = tile_height // scale_down_factor
-        self.scale_down_factor = scale_down_factor
-
-        vec_size = self.tile_width * self.tile_height * 3
-        assert s == vec_size, \
-            f'vectors must be of size {vec_size}'
+        self.th = th
+        self.tw = tw
+        self.grid_size = grid_size
 
     @classmethod
-    def from_folder(
-            cls, folder: Path, *,
-            tile_width: int,
-            tile_height: int,
-            scale_down_factor: int):
+    def from_folder(cls, folder: Path, grid_size: int):
+        ps = list(folder.glob('*.jpg'))
 
-        ps = sorted(list(folder.glob('*.jpg')))
+        tile = read_image_lab(ps[0])
 
-        tiles = load_tiles(
-            tqdm(ps, desc='reading tiles'),
-            tile_width=tile_width // scale_down_factor,
-            tile_height=tile_height // scale_down_factor)
+        h, w, _ = tile.shape
+        scale = max(h, w) / SIZE_FOR_MATCHING
+
+        th = int(h / scale)
+        tw = int(w / scale)
+        print(f'Loading tiles at scale {h=} {w=} {th=} {tw=} {scale=}')
+
+        tiles = load_tiles(ps, tw=tw, th=th)
 
         vecs = [
             tile.ravel().astype(np.float32)
@@ -64,19 +56,14 @@ class MozyqGenerator:
 
         vecs = np.stack(vecs)
 
-        return cls(
-            paths=ps,
-            vecs=vecs,
-            tile_width=tile_width,
-            tile_height=tile_height,
-            scale_down_factor=scale_down_factor)
+        return cls(paths=ps, vecs=vecs, grid_size=grid_size, tw=tw, th=th)
 
     def generate(self, master: np.ndarray):
         h, w, c = master.shape
 
         master = cv2.resize(
             master,
-            (w // self.scale_down_factor, h // self.scale_down_factor),
+            (self.tw * self.grid_size, self.th * self.grid_size),
             interpolation=cv2.INTER_AREA)
 
         assert c == 3, 'master image must be LAB'
@@ -88,8 +75,7 @@ class MozyqGenerator:
 
         targets = view_as_blocks(
             master,
-            block_shape=(self.tile_height, self.tile_width, 3)
-        ).reshape(-1, self.tile_height * self.tile_width * 3)
+            block_shape=(self.th, self.tw, 3)).reshape(-1, self.th * self.tw * 3)
 
         d = cdist(self.vecs, targets, metric='euclidean')
 
@@ -103,27 +89,13 @@ def gen_mzq_json(
         *,
         master: Path,
         tile_folder: Path,
-        width: int,
-        height: int,
-        scale_down_factor: int,
-        num_tiles: int,
+        grid_size: int,
         output_json: Path,
-        max_transitions: int = 50,):
-
-    assert num_tiles % 2 == 1, 'num_tiles must be odd'
-    assert width % 2 == 0, 'width must be even'
-    assert height % 2 == 0, 'height must be even'
-    assert width % num_tiles == 0, 'width must be divisible by num_tiles'
-    assert height % num_tiles == 0, 'height must be divisible by num_tiles'
-
-    tile_width = width // num_tiles
-    tile_height = height // num_tiles
+        max_transitions: int):
 
     gen = MozyqGenerator.from_folder(
         tile_folder,
-        tile_width=tile_width,
-        tile_height=tile_height,
-        scale_down_factor=scale_down_factor)
+        grid_size=grid_size)
 
     masters = set()
     mzqs: list[Mozyq] = []
@@ -160,35 +132,38 @@ def gen_mzq_json(
     print(f'Wrote Mozyq JSON to {output_json}')
 
 
-def blocks(
-        img_jpg: Path, *,
-        num_blocks: int = 5,
-        output_folder: Path = Path('./blocks')):
+def gen_full_json(
+        *,
+        tile_folder: Path,
+        grid_size: int,
+        output_json: Path):
 
-    output_folder.mkdir(parents=True, exist_ok=True)
+    gen = MozyqGenerator.from_folder(
+        tile_folder,
+        grid_size=grid_size)
 
-    img = read_image_lab(img_jpg)
-    h, w, c = img.shape
-    assert c == 3, 'image must be LAB'
+    tiles = {}
+    for p in tqdm(gen.paths, desc='Generating full JSON'):
+        tiles[str(p.name)] = [
+            str(p.name)
+            for p in gen.generate(read_image_lab(p))]
 
-    blocks = view_as_blocks(
-        img, block_shape=(h // num_blocks, w // num_blocks, 3))
-
-    for i, block in enumerate(blocks.reshape(-1, h // num_blocks, w // num_blocks, 3)):
-        block_path = output_folder / f'block_{i:03d}.jpg'
-        write_jpeg(block.astype(np.uint8), str(block_path))
+    # WRITE JSON
+    with output_json.open('w') as f:
+        json.dump(tiles, f)
 
 
 if __name__ == '__main__':
-    master = Path('./normalized/0518.jpg')
-    tile_folder = Path('./blocks')
+    master = Path('./normalized/0000.jpg')
+    # gen_mzq_json(
+    #     master=master,
+    #     tile_folder=master.parent,
+    #     grid_size=9,
+    #     max_transitions=2,
+    #     output_json=Path('./mzq.json')
+    # )
 
-    gen_mzq_json(
-        master=master,
-        tile_folder=master.parent,
-        width=600,
-        height=750,
-        num_tiles=15,
-        max_transitions=5,
-        output_json=Path('./output.json'),
-        scale_down_factor=10)
+    gen_full_json(
+        tile_folder=Path('./normalized'),
+        grid_size=9,
+        output_json=Path('./output.json'))

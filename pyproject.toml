@@ -1,35 +1,39 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "mozyq"
 version = "0.0.18"
-description = ""
-authors = ["Gilad Kutiel <gilad.kutiel@gmail.com>"]
+description = "Mozyq: Mosaic generation and more"
 readme = "README.md"
-homepage = "https://mozyq.org"
-repository = "https://github.com/mozyq/app/"
+authors = [{ name = "Gilad Kutiel", email = "gilad.kutiel@gmail.com" }]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "cattrs>=23.2",
+    "opencv-python>=4.10",
+    "scipy>=1.14",
+    "tqdm>=4.66.5",
+    "typer>=0.19",
+    "click>=8.3",
+    "pillow>=10.0.0",
+    "ffmpeg-python>=0.2.0",
+    "scikit-image>=0.25.2",
+    "psutil>=7.1.0",
+]
 
+[project.urls]
+Homepage = "https://mozyq.org"
+Repository = "https://github.com/mozyq/app/"
 
-[tool.poetry.group.dev.dependencies]
-pyright = "^1.1"
-pytest = "^8.3"
-pre-commit = "^3.8"
-
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-cattrs = "^23.2"
-opencv-python = "^4.10"
-scipy = "^1.14"
-tqdm = "^4.66.5"
-typer = "^0.19"
-click = "^8.3"
-pillow = "^10.0.0"
-ffmpeg-python = "^0.2.0"
-scikit-image = "^0.25.2"
-psutil = "^7.1.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 mzq = "mozyq.app:main"
+
+[tool.uv]
+dev-dependencies = [
+    "pyright>=1.1",
+    "pytest>=8.3",
+    "pre-commit>=3.8",
+    "vulture>=2.14",   # Added for your "knip-like" dead code checking
+    "deptry>=0.23.0",  # Added for unused dependency checking
+]
