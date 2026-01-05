@@ -1,11 +1,5 @@
 version: "3"
 
-env:
-  DOMAIN: "booky.kids"
-  APP_NAME: "sipoor-im"
-  APP_REPO: "sipoor-im/web"
-  TXT_NAME: "Booky"
-
 tasks:
   publish:
     cmds:
