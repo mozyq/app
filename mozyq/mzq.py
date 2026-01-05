@@ -142,11 +142,13 @@ def gen_full_json(
         tile_folder,
         grid_size=grid_size)
 
-    tiles = {}
-    for p in tqdm(gen.paths, desc='Generating full JSON'):
-        tiles[str(p.stem)] = [
+    tiles = {
+        str(p.stem): [
             str(p.stem)
             for p in gen.generate(read_image_lab(p))]
+
+        for p in tqdm(gen.paths, desc='Generating full JSON')
+    }
 
     # WRITE JSON
     with output_json.open('w') as f:

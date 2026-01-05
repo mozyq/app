@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mozyq"
-version = "0.0.20"
+version = "0.0.21"
 description = "Mozyq: Mosaic generation and more"
 readme = "README.md"
 authors = [{ name = "Gilad Kutiel", email = "gilad.kutiel@gmail.com" }]
@@ -30,10 +30,35 @@ Repository = "https://github.com/mozyq/app/"
 mzq = "mozyq.app:main"
 
 [tool.uv]
+package = true
+
 dev-dependencies = [
     "pyright>=1.1",
     "pytest>=8.3",
     "pre-commit>=3.8",
-    "vulture>=2.14",   # Added for your "knip-like" dead code checking
-    "deptry>=0.23.0",  # Added for unused dependency checking
+    "vulture>=2.14",
+    "deptry>=0.23.0",
+    "hatchling",
+]
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+    "docs",
+    "*.mp4",
+    "tst",
+    ".pre-commit-config.yaml",
+    "*.lock",
+    ".python-version",
+    "*.yml",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "docs",
+    "*.mp4",
+    "tst",
+    ".pre-commit-config.yaml",
+    "*.lock",
+    ".python-version",
+    "*.yml",
 ]
