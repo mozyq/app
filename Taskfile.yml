@@ -3,14 +3,8 @@ version: "3"
 tasks:
   publish:
     cmds:
-      # 1. Bump version (using hatch via uvx)
-      - uvx hatch version patch
-      # 2. Sync changes to git first (so the tag matches the commit)
-      - git commit -am "Release $(uvx hatch version)"
+      - poetry version patch
+      - poetry publish --build
+      - git tag $(poetry version -s)
+      - git commit -am "$(poetry version)"
       - git push
-      # 3. Build and Publish
-      # Note: uv publish --build is correct in latest versions
-      - uv publish
-      # 4. Tag the release
-      - git tag v$(uvx hatch version)
-      - git push origin --tags

@@ -2,14 +2,10 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.version]
-path = "mozyq/__init__.py"
-
 
 [project]
 name = "mozyq"
-dynamic = ["version"]
-description = "Mozyq: Mosaic generation and more"
+version = "0.0.22"
 readme = "README.md"
 authors = [{ name = "Gilad Kutiel", email = "gilad.kutiel@gmail.com" }]
 requires-python = ">=3.10,<3.13"
