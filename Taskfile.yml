@@ -10,7 +10,7 @@ tasks:
       - git push
       # 3. Build and Publish
       # Note: uv publish --build is correct in latest versions
-      - uv publish --build
+      - uv publish
       # 4. Tag the release
       - git tag v$(uvx hatch version)
       - git push origin --tags
