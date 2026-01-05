@@ -144,8 +144,8 @@ def gen_full_json(
 
     tiles = {}
     for p in tqdm(gen.paths, desc='Generating full JSON'):
-        tiles[str(p.name)] = [
-            str(p.name)
+        tiles[str(p.stem)] = [
+            str(p.stem)
             for p in gen.generate(read_image_lab(p))]
 
     # WRITE JSON
@@ -165,5 +165,5 @@ if __name__ == '__main__':
 
     gen_full_json(
         tile_folder=Path('./normalized'),
-        grid_size=9,
+        grid_size=16,
         output_json=Path('./output.json'))
