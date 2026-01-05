@@ -154,8 +154,8 @@ def mzq_json(
             master=master,
             tile_folder=tile_folder,
             grid_size=grid_size,
-            max_transitions=max_transitions,
             output_json=output_json,
+            max_transitions=max_transitions,
         )
 
         typer.echo(f"✅ Mozyq JSON created successfully: '{output_json}'")

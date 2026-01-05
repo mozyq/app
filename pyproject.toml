@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mozyq"
-version = "0.0.18"
+version = "0.0.20"
 description = "Mozyq: Mosaic generation and more"
 readme = "README.md"
 authors = [{ name = "Gilad Kutiel", email = "gilad.kutiel@gmail.com" }]
