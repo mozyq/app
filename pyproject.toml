@@ -2,9 +2,13 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "mozyq/__init__.py"
+
+
 [project]
 name = "mozyq"
-version = "0.0.21"
+dynamic = ["version"]
 description = "Mozyq: Mosaic generation and more"
 readme = "README.md"
 authors = [{ name = "Gilad Kutiel", email = "gilad.kutiel@gmail.com" }]
@@ -28,6 +32,7 @@ Repository = "https://github.com/mozyq/app/"
 
 [project.scripts]
 mzq = "mozyq.app:main"
+
 
 [tool.uv]
 package = true
