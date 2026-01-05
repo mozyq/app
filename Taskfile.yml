@@ -9,8 +9,8 @@ env:
 tasks:
   publish:
     cmds:
-      # - poetry version patch
-      # - poetry publish --build
-      # - git tag $(poetry version -s)
+      - poetry version patch
+      - poetry publish --build
+      - git tag $(poetry version -s)
       - git commit -am "$(poetry version)"
       - git push
