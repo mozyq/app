@@ -20,3 +20,7 @@ dist
 !/docs/*
 reproduce_issue.py
 reproduction_script.py
+
+demo/NotoColorEmoji.ttf
+demo/noto-emoji/
+emojis/

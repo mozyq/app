@@ -1,0 +1,12 @@
+DEMO:
+    I want to create a demo using the Google Emoji Noto Color emoji font.
+    You need to:
+        1. Download the font.
+        2. Generate a folder `emojis` and convert the font into images the mzq command can use.
+        3. Generate a short simple emojis.mp4 using the mzq command.
+
+
+EMOJI DEMO UPDATE:
+    For the demo we want to use at least 1000 emojis on a tile that is at least 13x13.
+    The conversion of the emojis to .jpg files looks bad the images are pixelated.
+    Please fix and re run

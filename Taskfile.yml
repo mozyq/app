@@ -1,5 +1,12 @@
 version: "3"
 
+vars:
+  GRID: 19 # tiles per row/col, must be odd; needs GRID*GRID tiles
+  TRANSITIONS: 5
+  FPT: 90 # frames per transition zoom -- higher = slower
+  FPS: 30
+  MIN_TILES: 1001 # 1000 emoji tiles + 1 master
+
 tasks:
   publish:
     cmds:
@@ -8,3 +15,68 @@ tasks:
       - git tag $(poetry version -s)
       - git commit -am "$(poetry version)"
       - git push
+
+  # --- emoji mosaic demo -----------------------------------------------------
+  # `task emoji` runs the whole pipeline; each step has a `status:` check so
+  # re-running only redoes what is missing or stale.
+
+  emoji:
+    desc: Build the emoji mosaic demo video (emojis.mp4) end to end.
+    # Each step is a dep of the next, so this walks the whole chain; every
+    # step's `status:` check lets `task` skip it when its output is current.
+    cmds:
+      - task: emoji:video
+
+  emoji:svg:
+    internal: true
+    cmds:
+      - git clone --depth 1 --filter=blob:none --sparse https://github.com/googlefonts/noto-emoji.git demo/noto-emoji
+      - git -C demo/noto-emoji sparse-checkout set svg
+    status:
+      - test -d demo/noto-emoji/svg
+
+  emoji:tiles:
+    desc: Rasterize + filter emoji SVGs into emojis/ (review these before building the video).
+    deps: [emoji:svg]
+    cmds:
+      - uv run python demo/make_emojis.py
+    status:
+      - test -f emojis/0000_master.jpg
+      - test "$(find emojis -name '*.jpg' | wc -l)" -ge {{.MIN_TILES}}
+      - test emojis/0000_master.jpg -nt demo/make_emojis.py
+      - test emojis/0000_master.jpg -nt demo/emoji_blocklist.txt
+
+  emoji:json:
+    desc: Solve the mosaic chain into emojis.mzq.json.
+    deps: [emoji:tiles]
+    cmds:
+      - uv run mzq json emojis/0000_master.jpg emojis.mzq.json --grid-size {{.GRID}} --max-transitions {{.TRANSITIONS}}
+    status:
+      - test emojis.mzq.json -nt emojis/0000_master.jpg
+      - test emojis.mzq.json -nt Taskfile.yml # rebuild if GRID / TRANSITIONS changed
+
+  emoji:frames:
+    desc: Render video frames from emojis.mzq.json.
+    deps: [emoji:json]
+    cmds:
+      - rm -rf frames
+      - uv run mzq frames emojis.mzq.json frames/ --fpt {{.FPT}}
+    status:
+      - test -d frames
+      - test frames/0000.jpg -nt emojis.mzq.json
+      - test frames/0000.jpg -nt Taskfile.yml # rebuild if FPT changed
+      - test "$(find frames -name '*.jpg' | wc -l)" -ge {{.FPT}}
+
+  emoji:video:
+    desc: Encode frames/ into emojis.mp4.
+    deps: [emoji:frames]
+    cmds:
+      - ffmpeg -y -r {{.FPS}} -i frames/%04d.jpg -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p emojis.mp4
+    status:
+      - test emojis.mp4 -nt frames/0000.jpg
+      - test emojis.mp4 -nt Taskfile.yml # re-encode if FPS changed
+
+  emoji:clean:
+    desc: Remove emoji demo artifacts (keeps the sparse-cloned SVGs).
+    cmds:
+      - rm -rf emojis frames emojis.mzq.json emojis.mp4

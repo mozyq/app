@@ -1,0 +1,84 @@
+# Emoji excluded from the mosaic tile set -- the ONLY filter now (plus an
+# automatic skip of glyphs that rasterise to nothing).
+#
+# One entry per line: a hex code point (1f6e4 / U+1F6E4) or the emoji itself.
+# Text after '#' is a comment. Blank lines are ignored.
+# Editing this file re-triggers `task emoji:tiles`.
+#
+# Workflow: run `task emoji:tiles`, look at the montage, add the muddy /
+# useless code points here, repeat.
+
+# --- full-frame "scene" emoji (a picture, not a subject) ---
+1f301   # 🌁 foggy
+1f303   # 🌃 night with stars
+1f304   # 🌄 sunrise over mountains
+1f305   # 🌅 sunrise
+1f306   # 🌆 cityscape at dusk
+1f307   # 🌇 sunset
+1f309   # 🌉 bridge at night
+1f30c   # 🌌 milky way
+1f320   # 🌠 shooting star
+1f391   # 🎑 moon viewing ceremony
+1f3d9   # 🏙 cityscape
+1f3dc   # 🏜 desert
+1f3de   # 🏞 national park
+1f5bc   # 🖼 framed picture
+1f9f1   # 🧱 brick
+1fa7b   # 🩻 x-ray
+1fa9f   # 🪟 window
+
+# --- no clear subject / muddy as a tile ---
+1f6e4   # 🛤 railway track
+1f5fa   # 🗺 world map
+1f30d   # 🌍 globe europe-africa
+1f30e   # 🌎 globe americas
+1f30f   # 🌏 globe asia-australia
+1f310   # 🌐 globe with meridians
+1f3d4   # 🏔 snow-capped mountain
+1f3d5   # 🏕 camping
+1f3db   # 🏛 classical building
+1f52c   # 🔬 microscope
+1f52d   # 🔭 telescope
+1f9ed   # 🧭 compass
+
+# --- render as a placeholder / component swatch, not a real emoji ---
+1f9b0   # 🦰 red hair
+1f9b1   # 🦱 curly hair
+1f9b2   # 🦲 bald
+1f9b3   # 🦳 white hair
+1f3fb   # 🏻 light skin tone (plain colour swatch)
+1f3fc   # 🏼 medium-light skin tone
+1f3fd   # 🏽 medium skin tone
+1f3fe   # 🏾 medium-dark skin tone
+1f3ff   # 🏿 dark skin tone
+
+# --- busy grid, reads as noise ---
+1f4c8   # 📈 chart increasing
+1f4c9   # 📉 chart decreasing
+1f4ca   # 📊 bar chart
+
+# --- the 24 near-identical clock faces would carpet the grey areas ---
+1f550   # 🕐
+1f551   # 🕑
+1f552   # 🕒
+1f553   # 🕓
+1f554   # 🕔
+1f555   # 🕕
+1f556   # 🕖
+1f557   # 🕗
+1f558   # 🕘
+1f559   # 🕙
+1f55a   # 🕚
+1f55b   # 🕛
+1f55c   # 🕜
+1f55d   # 🕝
+1f55e   # 🕞
+1f55f   # 🕟
+1f560   # 🕠
+1f561   # 🕡
+1f562   # 🕢
+1f563   # 🕣
+1f564   # 🕤
+1f565   # 🕥
+1f566   # 🕦
+1f567   # 🕧
