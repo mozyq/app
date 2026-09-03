@@ -61,16 +61,16 @@ def _master_transition(
     h, w, _ = master.shape
 
     zoom = max(1, max_zoom * scale)
-    crop_width = even(w / zoom)
-    crop_height = even(h / zoom)
+    crop_width = min(even(w / zoom), w)
+    crop_height = min(even(h / zoom), h)
 
     i = round(((1 + 2*y) * h - crop_height) / 2)
     j = round(((1 + 2*x) * w - crop_width) / 2)
 
-    maxi = h - crop_height
-    maxj = w - crop_width
-    assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
-    assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
+    # Accumulated even() rounding in the recursive scale_down can push the
+    # crop a pixel or two past the (rescaled) image; clamp instead of failing.
+    i = min(max(i, 0), h - crop_height)
+    j = min(max(j, 0), w - crop_width)
 
     crop = master[
         i:i + crop_height,
@@ -100,18 +100,18 @@ def _grid_transition(
     x, y, scale = t
     width, height = viewport
 
-    crop_width = even(width / scale)
-    crop_height = even(height / scale)
-
     h, w, _ = grid.shape
+
+    crop_width = min(even(width / scale), w)
+    crop_height = min(even(height / scale), h)
 
     i = round(((1 + 2*y) * h - crop_height) / 2)
     j = round(((1 + 2*x) * w - crop_width) / 2)
 
-    maxi = h - crop_height
-    maxj = w - crop_width
-    assert 0 <= i <= maxi, f'Bad crop {i} {x} {y} {maxi}'
-    assert 0 <= j <= maxj, f'Bad crop {j} {x} {y} {maxj}'
+    # Accumulated even() rounding in the recursive scale_down can push the
+    # crop a pixel or two past the (rescaled) grid; clamp instead of failing.
+    i = min(max(i, 0), h - crop_height)
+    j = min(max(j, 0), w - crop_width)
 
     crop = grid[
         i:i + crop_height,

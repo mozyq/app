@@ -70,11 +70,18 @@ tasks:
   emoji:video:
     desc: Encode frames/ into emojis.mp4.
     deps: [emoji:frames]
+    # -crf 14 + veryslow: near-transparent quality (file size is a non-issue for a
+    # short demo). yuv420p + faststart keep it playable everywhere / streamable.
+    # bt709 tags stop players colour-shifting the source JPEGs.
     cmds:
-      - ffmpeg -y -r {{.FPS}} -i frames/%04d.jpg -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p emojis.mp4
+      - >-
+        ffmpeg -y -framerate {{.FPS}} -i frames/%04d.jpg
+        -c:v libx264 -preset veryslow -crf 14 -pix_fmt yuv420p
+        -color_primaries bt709 -color_trc bt709 -colorspace bt709
+        -movflags +faststart emojis.mp4
     status:
       - test emojis.mp4 -nt frames/0000.jpg
-      - test emojis.mp4 -nt Taskfile.yml # re-encode if FPS changed
+      - test emojis.mp4 -nt Taskfile.yml # re-encode if FPS / encode settings changed
 
   emoji:clean:
     desc: Remove emoji demo artifacts (keeps the sparse-cloned SVGs).
