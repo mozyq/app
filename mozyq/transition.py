@@ -163,7 +163,8 @@ def _gen_transition(
 def _transition(
         master: np.ndarray,
         grid: np.ndarray,
-        t: Transition):
+        t: Transition,
+        crossfade_frames: int = 60):
 
     h, w, _ = master.shape
     gh, gw, _ = grid.shape
@@ -189,12 +190,12 @@ def _transition(
 
         yield a * crop_master + (1 - a) * crop_grid
 
-    fade = b + (1 - b) * np.linspace(0, 1, 30) ** 2
+    fade = b + (1 - b) * np.linspace(0, 1, crossfade_frames) ** 2
     for a in fade:
         yield a * master + (1 - a) * crop_grid
 
 
-def mzq_transition(mzq: Mozyq, fpt: int):
+def mzq_transition(mzq: Mozyq, fpt: int, crossfade_frames: int = 60):
     master = read_image_lab(Path(mzq.master))
     grid = tiles2grid([
         read_image_lab(Path(tile))
@@ -212,4 +213,5 @@ def mzq_transition(mzq: Mozyq, fpt: int):
     yield from _transition(
         master=master,
         grid=grid,
-        t=t)
+        t=t,
+        crossfade_frames=crossfade_frames)

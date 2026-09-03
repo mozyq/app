@@ -101,6 +101,7 @@ Reads a JSON file produced by `mzq json` and renders the zoom animation as seque
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--fpt` | `60` | Frames rendered per transition |
+| `--crossfade-frames` | `60` | Frames spent cross-fading the mosaic into the master image at the end of each transition (higher = slower fade) |
 
 Feed the frames to ffmpeg to produce the final video:
 
@@ -128,7 +129,7 @@ Requires at least `grid_size²` images in `TILE_FOLDER`.
 2. **Vectorize** each tile: downscale in LAB color space and flatten to a feature vector.
 3. **Split** the master into a `grid_size × grid_size` set of cells.
 4. **Assign** tiles to cells by minimizing total Euclidean distance in LAB space with the Hungarian algorithm.
-5. **Animate**: `mzq frames` renders a cosine-eased zoom out from the start tile to the full mosaic, cross-fading toward the master image near the end of each transition.
+5. **Animate**: `mzq frames` renders a cosine-eased zoom out from the start tile to the full mosaic, then cross-fades toward the master image over `--crossfade-frames` frames at the end of each transition.
 
 Each output frame is the size of the normalized images, so a larger `mzq normalize` target produces a higher-resolution video.
 

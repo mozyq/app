@@ -250,6 +250,10 @@ def mzq_frames(
     fpt: Annotated[int, typer.Option(
         help="Frames per transition.")] = 60,
 
+    crossfade_frames: Annotated[int, typer.Option(
+        help="Frames spent cross-fading the mosaic into the master image "
+             "at the end of each transition.")] = 60,
+
 ):
     """Generate frames from a Mozyq JSON file."""
     try:
@@ -263,6 +267,11 @@ def mzq_frames(
             typer.echo(f"❌ Error: '{mzq_json}' is not a file.", err=True)
             raise typer.Exit(1)
 
+        if crossfade_frames < 1:
+            typer.echo(
+                f"❌ Error: crossfade_frames must be at least 1, got {crossfade_frames}", err=True)
+            raise typer.Exit(1)
+
         from mozyq.frame import frames
 
         # Load and validate JSON
@@ -271,13 +280,15 @@ def mzq_frames(
         typer.echo(f"📋 Loading Mozyq data from: '{mzq_json}'")
         typer.echo(f"📤 Output frames to: '{out_folder}'")
         typer.echo(f"🎞️  Frames per transition: {fpt}")
+        typer.echo(f"🌗 Cross-fade frames: {crossfade_frames}")
         typer.echo(f"📊 Loaded {len(mzqs)} Mozyq sequences")
 
         # Generate frames
         frames(
             mzqs=mzqs,
             out_folder=out_folder,
-            fpt=fpt)
+            fpt=fpt,
+            crossfade_frames=crossfade_frames)
 
         typer.echo("✅ Frame generation completed successfully!")
 

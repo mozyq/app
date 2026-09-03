@@ -13,12 +13,13 @@ def frames(
         *,
         mzqs: list[Mozyq],
         fpt: int,
-        out_folder: Path):
+        out_folder: Path,
+        crossfade_frames: int = 60):
     out_folder.mkdir(parents=True, exist_ok=True)
 
     i = 0
     for mzq in mzqs:
-        fs = mzq_transition(mzq, fpt=fpt)
+        fs = mzq_transition(mzq, fpt=fpt, crossfade_frames=crossfade_frames)
 
         for frame in tqdm(fs):
             write_jpeg(
