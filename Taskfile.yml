@@ -1,11 +1,13 @@
 version: "3"
 
 vars:
-  GRID: 19 # tiles per row/col, must be odd; needs GRID*GRID tiles
-  TRANSITIONS: 5
-  FPT: 90 # frames per transition zoom -- higher = slower
+  GRID: 21 # tiles per row/col, must be odd; needs GRID*GRID tiles
+  TRANSITIONS: 9
+  FPT: 80 # frames per transition zoom -- higher = slower
   FPS: 30
   MIN_TILES: 1001 # 1000 emoji tiles + 1 master
+  # seed image: emoji code point / "U+..." / emoji char, or an image path
+  MASTER: 1F970
 
 tasks:
   publish:
@@ -39,12 +41,13 @@ tasks:
     desc: Rasterize + filter emoji SVGs into emojis/ (review these before building the video).
     deps: [emoji:svg]
     cmds:
-      - uv run python demo/make_emojis.py
+      - EMOJI_MASTER='{{.MASTER}}' uv run python demo/make_emojis.py
     status:
       - test -f emojis/0000_master.jpg
       - test "$(find emojis -name '*.jpg' | wc -l)" -ge {{.MIN_TILES}}
       - test emojis/0000_master.jpg -nt demo/make_emojis.py
       - test emojis/0000_master.jpg -nt demo/emoji_blocklist.txt
+      - test emojis/0000_master.jpg -nt Taskfile.yml # rebuild if MASTER changed
 
   emoji:json:
     desc: Solve the mosaic chain into emojis.mzq.json.
