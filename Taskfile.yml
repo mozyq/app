@@ -17,12 +17,18 @@ vars:
 
 tasks:
   publish:
+    desc: Test, bump the patch version, publish to PyPI, then commit + tag + push.
     cmds:
-      - poetry version patch
-      - poetry publish --build
-      - git tag $(poetry version -s)
-      - git commit -am "$(poetry version)"
+      - uv run pytest
+      - test -z "$(git status --porcelain)" || (echo "worktree not clean; commit or stash first" >&2 && exit 1)
+      - uv version --bump patch
+      - uv build
+      - uv publish
+      - git add pyproject.toml uv.lock
+      - git commit -m "mozyq $(uv version --short)"
+      - git tag "$(uv version --short)"
       - git push
+      - git push --tags
 
   # --- emoji mosaic demo -----------------------------------------------------
   # `task emoji` runs the whole pipeline; each step has a `status:` check so
