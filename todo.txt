@@ -1,18 +1,11 @@
-DEMO:
-    I want to create a demo using the Google Emoji Noto Color emoji font.
-    You need to:
-        1. Download the font.
-        2. Generate a folder `emojis` and convert the font into images the mzq command can use.
-        3. Generate a short simple emojis.mp4 using the mzq command.
+Auto Publish:
+I want to create a pre-push hook and a github action to automate the publishing of my project whenever I push changes to the main branch.
+The pre-push hook should 
+1. test the project
+2. make sure worktree is clean
+3. bump the version and commit the changes
+
+The github action should publish to pypi.
 
 
-EMOJI DEMO UPDATE:
-    For the demo we want to use at least 1000 emojis on a tile that is at least 13x13.
-    The conversion of the emojis to .jpg files looks bad the images are pixelated.
-    Please fix and re run
-
-
-CROSS FADE:
-    Add an optional flag to the mzq command line to control the cross fade duration.
-    The default value should be slower than it is now.
-    Update the README.md and any other documentation to reflect this change.
+Please implement.

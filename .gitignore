@@ -14,6 +14,7 @@ dist
 *.json
 *.webp
 *.html
+*.sig
 
 !readme.mp4
 !docs

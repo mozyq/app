@@ -1,13 +1,19 @@
 version: "3"
 
 vars:
-  GRID: 21 # tiles per row/col, must be odd; needs GRID*GRID tiles
-  TRANSITIONS: 9
+  GRID: 23 # tiles per row/col, must be odd; needs GRID*GRID tiles
+  TRANSITIONS: 10
   FPT: 80 # frames per transition zoom -- higher = slower
   FPS: 30
   MIN_TILES: 1001 # 1000 emoji tiles + 1 master
   # seed image: emoji code point / "U+..." / emoji char, or an image path
   MASTER: 1F970
+  # make_emojis.py writes the seed into emojis/ named by its code point, like
+  # every other tile (assumes MASTER is a bare/"U+" hex code point)
+  MASTER_TILE: '{{ lower .MASTER | trimPrefix "u+" }}.jpg'
+  AUDIO: audio.mp3 # soundtrack muxed onto the final video by `emoji:mux`
+  MUX_DUR: 49 # cap the muxed emojis.mp4 at this many seconds
+  MUX_FADE_OUT_DUR: 3 # fade video to black + audio to mute over this many seconds at the end
 
 tasks:
   publish:
@@ -27,7 +33,7 @@ tasks:
     # Each step is a dep of the next, so this walks the whole chain; every
     # step's `status:` check lets `task` skip it when its output is current.
     cmds:
-      - task: emoji:video
+      - task: emoji:mux
 
   emoji:svg:
     internal: true
@@ -40,53 +46,100 @@ tasks:
   emoji:tiles:
     desc: Rasterize + filter emoji SVGs into emojis/ (review these before building the video).
     deps: [emoji:svg]
+    # SIG records the knobs this step depends on; the .sig stamp is written only
+    # on a completed run, so editing an unrelated var (MUX_DUR, FPS, ...) no
+    # longer forces a 3-minute rebuild, and an interrupted run stays stale.
+    vars:
+      SIG: 'master={{.MASTER}} min={{.MIN_TILES}}'
     cmds:
+      - rm -f emojis/.sig
       - EMOJI_MASTER='{{.MASTER}}' uv run python demo/make_emojis.py
+      - printf '%s' '{{.SIG}}' > emojis/.sig
     status:
-      - test -f emojis/0000_master.jpg
+      - test -f emojis/{{.MASTER_TILE}}
       - test "$(find emojis -name '*.jpg' | wc -l)" -ge {{.MIN_TILES}}
-      - test emojis/0000_master.jpg -nt demo/make_emojis.py
-      - test emojis/0000_master.jpg -nt demo/emoji_blocklist.txt
-      - test emojis/0000_master.jpg -nt Taskfile.yml # rebuild if MASTER changed
+      - test emojis/{{.MASTER_TILE}} -nt demo/make_emojis.py
+      - test emojis/{{.MASTER_TILE}} -nt demo/emoji_blocklist.txt
+      - test "$(cat emojis/.sig 2>/dev/null)" = '{{.SIG}}'
 
   emoji:json:
     desc: Solve the mosaic chain into emojis.mzq.json.
     deps: [emoji:tiles]
+    vars:
+      SIG: 'grid={{.GRID}} transitions={{.TRANSITIONS}} master={{.MASTER_TILE}}'
     cmds:
-      - uv run mzq json emojis/0000_master.jpg emojis.mzq.json --grid-size {{.GRID}} --max-transitions {{.TRANSITIONS}}
+      - rm -f emojis.mzq.json.sig
+      - uv run mzq json emojis/{{.MASTER_TILE}} emojis.mzq.json --grid-size {{.GRID}} --max-transitions {{.TRANSITIONS}}
+      - printf '%s' '{{.SIG}}' > emojis.mzq.json.sig
     status:
-      - test emojis.mzq.json -nt emojis/0000_master.jpg
-      - test emojis.mzq.json -nt Taskfile.yml # rebuild if GRID / TRANSITIONS changed
+      - test emojis.mzq.json -nt emojis/{{.MASTER_TILE}}
+      - test "$(cat emojis.mzq.json.sig 2>/dev/null)" = '{{.SIG}}' # rebuild if GRID / TRANSITIONS changed
 
   emoji:frames:
     desc: Render video frames from emojis.mzq.json.
     deps: [emoji:json]
+    vars:
+      SIG: 'fpt={{.FPT}}'
     cmds:
-      - rm -rf frames
+      - rm -rf frames frames.sig
       - uv run mzq frames emojis.mzq.json frames/ --fpt {{.FPT}}
+      - printf '%s' '{{.SIG}}' > frames.sig
     status:
       - test -d frames
       - test frames/0000.jpg -nt emojis.mzq.json
-      - test frames/0000.jpg -nt Taskfile.yml # rebuild if FPT changed
+      - test "$(cat frames.sig 2>/dev/null)" = '{{.SIG}}' # rebuild if FPT changed
       - test "$(find frames -name '*.jpg' | wc -l)" -ge {{.FPT}}
 
   emoji:video:
-    desc: Encode frames/ into emojis.mp4.
+    desc: Encode frames/ into the silent video emojis.silent.mp4.
     deps: [emoji:frames]
     # -crf 14 + veryslow: near-transparent quality (file size is a non-issue for a
     # short demo). yuv420p + faststart keep it playable everywhere / streamable.
     # bt709 tags stop players colour-shifting the source JPEGs.
+    # SIG tracks FPS only; after editing the hard-coded encode flags below,
+    # force a re-encode with `task emoji:video --force`.
+    vars:
+      SIG: 'fps={{.FPS}}'
     cmds:
+      - rm -f emojis.silent.mp4.sig
       - >-
         ffmpeg -y -framerate {{.FPS}} -i frames/%04d.jpg
         -c:v libx264 -preset veryslow -crf 14 -pix_fmt yuv420p
         -color_primaries bt709 -color_trc bt709 -colorspace bt709
-        -movflags +faststart emojis.mp4
+        -movflags +faststart emojis.silent.mp4
+      - printf '%s' '{{.SIG}}' > emojis.silent.mp4.sig
     status:
-      - test emojis.mp4 -nt frames/0000.jpg
-      - test emojis.mp4 -nt Taskfile.yml # re-encode if FPS / encode settings changed
+      - test emojis.silent.mp4 -nt frames/0000.jpg
+      - test "$(cat emojis.silent.mp4.sig 2>/dev/null)" = '{{.SIG}}' # re-encode if FPS changed
+
+  emoji:mux:
+    desc: Mux {{.AUDIO}} onto emojis.silent.mp4 for {{.MUX_DUR}}s (with a {{.MUX_FADE_OUT_DUR}}s fade-out) to produce emojis.mp4.
+    deps: [emoji:video]
+    # -t {{.MUX_DUR}}: cap the output at MUX_DUR seconds. -shortest: also stop at
+    # the shorter of video / audio. The fade filters ramp video to black and
+    # audio to silence over the last MUX_FADE_OUT_DUR seconds, so the video is
+    # re-encoded (libx264, same settings as emoji:video); audio -> AAC for mp4.
+    vars:
+      SIG: 'audio={{.AUDIO}} dur={{.MUX_DUR}} fade={{.MUX_FADE_OUT_DUR}}'
+    cmds:
+      - rm -f emojis.mp4.sig
+      - >-
+        ffmpeg -y -i emojis.silent.mp4 -i {{.AUDIO}}
+        -map 0:v:0 -map 1:a:0
+        -vf fade=t=out:st={{sub (int .MUX_DUR) (int .MUX_FADE_OUT_DUR)}}:d={{.MUX_FADE_OUT_DUR}}
+        -af afade=t=out:st={{sub (int .MUX_DUR) (int .MUX_FADE_OUT_DUR)}}:d={{.MUX_FADE_OUT_DUR}}
+        -c:v libx264 -preset veryslow -crf 14 -pix_fmt yuv420p
+        -color_primaries bt709 -color_trc bt709 -colorspace bt709
+        -c:a aac -b:a 192k
+        -shortest -t {{.MUX_DUR}} -movflags +faststart emojis.mp4
+      - printf '%s' '{{.SIG}}' > emojis.mp4.sig
+    status:
+      - test emojis.mp4 -nt emojis.silent.mp4
+      - test emojis.mp4 -nt {{.AUDIO}}
+      - test "$(cat emojis.mp4.sig 2>/dev/null)" = '{{.SIG}}' # re-mux if AUDIO / MUX_DUR / fade changed
 
   emoji:clean:
     desc: Remove emoji demo artifacts (keeps the sparse-cloned SVGs).
     cmds:
-      - rm -rf emojis frames emojis.mzq.json emojis.mp4
+      - rm -rf emojis frames emojis.mzq.json emojis.silent.mp4 emojis.mp4
+        frames.sig emojis.mzq.json.sig emojis.silent.mp4.sig emojis.mp4.sig
